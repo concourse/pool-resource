@@ -1,0 +1,48 @@
+#!/bin/sh
+# vim: set ft=sh
+
+set -e
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+source $(dirname $0)/common.sh
+
+# for jq
+PATH=/usr/local/bin:$PATH
+
+payload=$TMPDIR/git-resource-request
+
+cat > $payload <&0
+
+load_pubkey $payload
+
+uri=$(jq -r '.source.uri // ""' < $payload)
+branch=$(jq -r '.source.branch // ""' < $payload)
+paths="$(jq -r '(.source.paths // ["."])[]' < $payload)" # those "'s are important
+ignore_paths="$(jq -r '":!" + (.source.ignore_paths // [])[]' < $payload)" # these ones too
+ref=$(jq -r '.version.ref // ""' < $payload)
+
+destination=$TMPDIR/git-resource-repo-cache
+
+if [ -d $destination ]; then
+  cd $destination
+  git fetch
+  git reset --hard FETCH_HEAD
+else
+  branchflag=""
+  if [ -n "$branch" ]; then
+    branchflag="--branch $branch"
+  fi
+
+  git clone $uri $branchflag $destination
+  cd $destination
+fi
+
+{
+  if [ -n "$ref" ] && git cat-file -e "$ref"; then
+    git log --reverse ${ref}..HEAD --pretty='format:%H' -- $paths $ignore_paths
+  else
+    git log -1 --pretty='format:%H' -- $paths $ignore_paths
+  fi
+ } | jq -R '.' | jq -s "map({ref: .})" >&3
