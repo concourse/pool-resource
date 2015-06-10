@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -57,16 +57,15 @@ var _ = Describe("Out", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
-	JustBeforeEach(func() {
-	})
-
 	Context("when the config is incomplete", func() {
 		var session *gexec.Session
 
 		BeforeEach(func() {
 			outRequest = out.OutRequest{}
 
-			session = runOut(outRequest, sourceDir, 1)
+			session = runOut(outRequest, sourceDir)
+			Eventually(session).Should(gexec.Exit(1))
+
 		})
 
 		It("returns all config errors", func() {
@@ -93,23 +92,27 @@ var _ = Describe("Out", func() {
 				},
 			}
 
-			session := runOut(outRequest, sourceDir, 0)
+			session := runOut(outRequest, sourceDir)
+			Eventually(session).Should(gexec.Exit(0))
+
 			err := json.Unmarshal(session.Out.Contents(), &outResponse)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("moves a lock to claimed", func() {
-			gitSetup := exec.Command("git", "pull", bareGitRepo)
-			gitSetup.Dir = gitRepo
-			err := gitSetup.Run()
+			version := getVersion(bareGitRepo)
+
+			reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			gitVersion := exec.Command("git", "rev-parse", "HEAD")
-			gitVersion.Dir = gitRepo
-			sha, err := gitVersion.Output()
+			defer os.RemoveAll(reCloneRepo)
+
+			reClone := exec.Command("git", "clone", bareGitRepo, ".")
+			reClone.Dir = reCloneRepo
+			err = reClone.Run()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			claimedFiles, err := ioutil.ReadDir(filepath.Join(gitRepo, "lock-pool", "claimed"))
+			claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(len(claimedFiles)).Should(Equal(2))
@@ -123,11 +126,81 @@ var _ = Describe("Out", func() {
 			}
 
 			Ω(outResponse).Should(Equal(out.OutResponse{
-				Version: out.Version{
-					Ref: strings.TrimSpace(string(sha)),
-				},
+				Version: version,
 				Metadata: []out.MetadataPair{
 					{Name: "lock_name", Value: lockFile},
+					{Name: "pool_name", Value: "lock-pool"},
+				},
+			}))
+		})
+	})
+
+	Context("when there are no locks to be claimed", func() {
+		var session *gexec.Session
+		var claimAllLocksDir string
+
+		BeforeEach(func() {
+			var err error
+
+			outRequest = out.OutRequest{
+				Source: out.Source{
+					URI:    bareGitRepo,
+					Branch: "master",
+					Pool:   "lock-pool",
+				},
+				Params: out.OutParams{
+					Acquire: true,
+				},
+			}
+
+			claimAllLocksDir, err = ioutil.TempDir("", "claiming-locks")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			claimAllLocks := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
+				git clone %s .
+				git mv lock-pool/unclaimed/* lock-pool/claimed/
+				git commit -am "claiming all locks"
+				git push
+			`, bareGitRepo))
+
+			claimAllLocks.Dir = claimAllLocksDir
+
+			err = claimAllLocks.Run()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			session = runOut(outRequest, sourceDir)
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(claimAllLocksDir)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("retries until a lock can be claimed", func() {
+			Consistently(session, 11*time.Second).ShouldNot(gexec.Exit(0))
+
+			releaseLock := exec.Command("bash", "-e", "-c", fmt.Sprint(`
+				git mv lock-pool/claimed/some-lock lock-pool/unclaimed/some-lock
+				git commit -am "unclaiming some-lock"
+				git push
+			`))
+
+			releaseLock.Dir = claimAllLocksDir
+
+			err := releaseLock.Run()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(session, 20*time.Second).Should(gexec.Exit(0))
+
+			err = json.Unmarshal(session.Out.Contents(), &outResponse)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(outResponse).Should(Equal(out.OutResponse{
+				Version: out.Version{
+					Ref: outResponse.Version.Ref,
+				},
+				Metadata: []out.MetadataPair{
+					{Name: "lock_name", Value: "some-lock"},
 					{Name: "pool_name", Value: "lock-pool"},
 				},
 			}))
@@ -151,7 +224,9 @@ var _ = Describe("Out", func() {
 				},
 			}
 
-			session := runOut(outRequest, sourceDir, 0)
+			session := runOut(outRequest, sourceDir)
+			Eventually(session).Should(gexec.Exit(0))
+
 			err := json.Unmarshal(session.Out.Contents(), &outResponse)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
@@ -187,7 +262,9 @@ var _ = Describe("Out", func() {
 				},
 			}
 
-			session := runOut(outReleaseRequest, myLocksGetDir, 0)
+			session := runOut(outReleaseRequest, myLocksGetDir)
+			Eventually(session).Should(gexec.Exit(0))
+
 			err = json.Unmarshal(session.Out.Contents(), &outReleaseResponse)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
@@ -198,15 +275,7 @@ var _ = Describe("Out", func() {
 		})
 
 		It("moves the lock to unclaimed", func() {
-			gitSetup := exec.Command("git", "pull", bareGitRepo)
-			gitSetup.Dir = gitRepo
-			err := gitSetup.Run()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			gitVersion := exec.Command("git", "rev-parse", "HEAD")
-			gitVersion.Dir = gitRepo
-			sha, err := gitVersion.Output()
-			Ω(err).ShouldNot(HaveOccurred())
+			version := getVersion(bareGitRepo)
 
 			claimedFiles, err := ioutil.ReadDir(filepath.Join(gitRepo, "lock-pool", "claimed"))
 			Ω(err).ShouldNot(HaveOccurred())
@@ -226,9 +295,7 @@ var _ = Describe("Out", func() {
 			}
 
 			Ω(outReleaseResponse).Should(Equal(out.OutResponse{
-				Version: out.Version{
-					Ref: strings.TrimSpace(string(sha)),
-				},
+				Version: version,
 				Metadata: []out.MetadataPair{
 					{Name: "lock_name", Value: releasedLockName},
 					{Name: "pool_name", Value: "lock-pool"},
@@ -236,5 +303,4 @@ var _ = Describe("Out", func() {
 			}))
 		})
 	})
-
 })

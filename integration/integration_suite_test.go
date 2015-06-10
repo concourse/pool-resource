@@ -2,9 +2,11 @@ package integration_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/concourse/pool-resource/out"
 	. "github.com/onsi/ginkgo"
@@ -65,7 +67,7 @@ func runIn(inJson string, destination string, expectedExitCode int) *gexec.Sessi
 	return session
 }
 
-func runOut(request out.OutRequest, sourceDir string, expectedExitCode int) *gexec.Session {
+func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 	outCmd := exec.Command(outPath, sourceDir)
 	stdin, err := outCmd.StdinPipe()
 	Ω(err).ShouldNot(HaveOccurred())
@@ -75,8 +77,6 @@ func runOut(request out.OutRequest, sourceDir string, expectedExitCode int) *gex
 
 	json.NewEncoder(stdin).Encode(request)
 	stdin.Close()
-
-	Eventually(session).Should(gexec.Exit(expectedExitCode))
 
 	return session
 }
@@ -104,4 +104,25 @@ func setupGitRepo(dir string) {
 
 	err := gitSetup.Run()
 	Ω(err).ShouldNot(HaveOccurred())
+}
+
+func getVersion(gitURI string) out.Version {
+	gitVersionRepo, err := ioutil.TempDir("", "git-version-repo")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	defer os.RemoveAll(gitVersionRepo)
+
+	gitSetup := exec.Command("git", "clone", gitURI, ".")
+	gitSetup.Dir = gitVersionRepo
+	err = gitSetup.Run()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	gitVersion := exec.Command("git", "rev-parse", "HEAD")
+	gitVersion.Dir = gitVersionRepo
+	sha, err := gitVersion.Output()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return out.Version{
+		Ref: strings.TrimSpace(string(sha)),
+	}
 }

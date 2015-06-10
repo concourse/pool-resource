@@ -1,9 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -13,6 +13,8 @@ import (
 
 	"github.com/concourse/pool-resource/out"
 )
+
+var ErrNoLocksAvailable = errors.New("No locks to claim")
 
 type Pools struct {
 	Source out.Source
@@ -33,20 +35,27 @@ func (p *Pools) AcquireLock(pool string) (string, out.Version, error) {
 	)
 
 	broadcastSuccessful = false
+
 	for broadcastSuccessful == false {
+		// output something so that we know it's still churning
+
 		lock, ref, err = p.grabAvailableLock(pool)
 
-		err = p.broadcastLockPool()
-
 		if err == nil {
-			broadcastSuccessful = true
-		} else {
+			err = p.broadcastLockPool()
+		}
+
+		if err != nil {
 			err = p.resetLock()
+
 			if err != nil {
-				log.Fatalln(err)
+
+				fatal("resetting lock", err)
 			}
 
-			time.Sleep(30 * time.Second)
+			time.Sleep(10 * time.Second)
+		} else {
+			broadcastSuccessful = true
 		}
 	}
 
@@ -102,16 +111,15 @@ func (p *Pools) unclaimLock(lockName string) (string, error) {
 }
 
 func (p *Pools) resetLock() error {
-	_, err := p.git("reset", "--hard", "origin/"+p.Source.Branch)
+	_, err := p.git("fetch", "origin", p.Source.Branch)
 	if err != nil {
 		return err
 	}
 
-	_, err = p.git("branch", "-f", p.Source.Branch)
+	_, err = p.git("reset", "--hard", "origin/"+p.Source.Branch)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -151,9 +159,14 @@ func (p *Pools) grabAvailableLock(pool string) (string, string, error) {
 	}
 
 	for _, file := range allFiles {
-		if filepath.Base(file.Name()) != ".gitkeep" {
+		fileName := filepath.Base(file.Name())
+		if !strings.HasPrefix(fileName, ".") {
 			files = append(files, file)
 		}
+	}
+
+	if len(files) == 0 {
+		return "", "", ErrNoLocksAvailable
 	}
 
 	rand.Seed(time.Now().Unix())
