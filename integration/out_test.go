@@ -72,10 +72,10 @@ var _ = Describe("Out", func() {
 		It("returns all config errors", func() {
 			errorMessages := string(session.Err.Contents())
 
-			Ω(errorMessages).Should(ContainSubstring("uri is required in the resource source config"))
-			Ω(errorMessages).Should(ContainSubstring("pool is required in the resource source config"))
-			Ω(errorMessages).Should(ContainSubstring("branch is required in the resource source config"))
-			Ω(errorMessages).Should(ContainSubstring("acquire or release is required in the put params"))
+			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing uri)"))
+			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing pool)"))
+			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing branch)"))
+			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire or release)"))
 		})
 
 	})
@@ -166,14 +166,15 @@ var _ = Describe("Out", func() {
 				{
 					"source": {
 						"uri": "%s",
-						"branch": "master"
+						"branch": "master",
+						"pool": "lock-pool"
 					},
 					"version": {
 						"ref": "%s"
 					}
 				}`, bareGitRepo, string(outResponse.Version.Ref))
 
-			runIn(jsonIn, filepath.Join(myLocksGetDir, "lock-step-name"))
+			runIn(jsonIn, filepath.Join(myLocksGetDir, "lock-step-name"), 0)
 
 			outReleaseRequest = out.OutRequest{
 				Source: out.Source{

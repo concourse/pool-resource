@@ -47,9 +47,7 @@ type inResponse struct {
 	Metadata []metadataPair `json:"metadata"`
 }
 
-func runIn(inJson string, destination string) inResponse {
-	var response inResponse
-
+func runIn(inJson string, destination string, expectedExitCode int) *gexec.Session {
 	inCmd := exec.Command(inPath, destination)
 	stdin, err := inCmd.StdinPipe()
 	Ω(err).ShouldNot(HaveOccurred())
@@ -62,11 +60,9 @@ func runIn(inJson string, destination string) inResponse {
 
 	Ω(err).ShouldNot(HaveOccurred())
 
-	Eventually(session).Should(gexec.Exit(0))
+	Eventually(session).Should(gexec.Exit(expectedExitCode))
 
-	err = json.Unmarshal(session.Out.Contents(), &response)
-	Ω(err).ShouldNot(HaveOccurred())
-	return response
+	return session
 }
 
 func runOut(request out.OutRequest, sourceDir string, expectedExitCode int) *gexec.Session {

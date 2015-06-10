@@ -70,19 +70,19 @@ func validateRequest(request out.OutRequest) {
 	var errorMessages []string
 
 	if request.Source.URI == "" {
-		errorMessages = append(errorMessages, "uri is required in the resource source config")
+		errorMessages = append(errorMessages, "invalid payload (missing uri)")
 	}
 
 	if request.Source.Pool == "" {
-		errorMessages = append(errorMessages, "pool is required in the resource source config")
+		errorMessages = append(errorMessages, "invalid payload (missing pool)")
 	}
 
 	if request.Source.Branch == "" {
-		errorMessages = append(errorMessages, "branch is required in the resource source config")
+		errorMessages = append(errorMessages, "invalid payload (missing branch)")
 	}
 
 	if request.Params.Acquire == false && request.Params.Release == "" {
-		errorMessages = append(errorMessages, "acquire or release is required in the put params")
+		errorMessages = append(errorMessages, "invalid payload (missing acquire or release)")
 	}
 
 	if len(errorMessages) > 0 {

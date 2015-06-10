@@ -23,13 +23,29 @@ cat > $payload <&0
 
 uri=$(jq -r '.source.uri // ""' < $payload)
 branch=$(jq -r '.source.branch // ""' < $payload)
+pool_name=$(jq -r '.source.pool // ""' < $payload)
 ref=$(jq -r '.version.ref // "HEAD"' < $payload)
 
 if [ -z "$uri" ]; then
-  echo "invalid payload (missing uri):" >&2
-  cat $payload >&2
+  config_errors+="invalid payload (missing uri)\n"
+fi
+
+if [ -z "$branch" ]; then
+  config_errors+="invalid payload (missing branch)\n"
+fi
+
+if [ -z "$pool_name" ]; then
+  config_errors+="invalid payload (missing pool)\n"
+fi
+
+
+if [ -n "$config_errors" ]; then
+  echo $config_errors
   exit 1
 fi
+
+
+
 
 branchflag=""
 if [ -n "$branch" ]; then
@@ -46,7 +62,6 @@ git clean --force --force -d
 
 changed_filepath=$(git diff --name-only HEAD~1 | head -1)
 changed_filename=$(echo $changed_filepath | rev | cut -d "/" -f 1 | rev)
-pool_name=$(echo $changed_filepath | cut -d "/" -f 1)
 
 jq -n "{
   version: {ref: $(git rev-parse HEAD | jq -R .)},

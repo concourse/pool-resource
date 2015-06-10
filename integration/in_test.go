@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("In", func() {
@@ -32,6 +34,22 @@ var _ = Describe("In", func() {
 
 		err = os.RemoveAll(gitRepo)
 		Ω(err).ShouldNot(HaveOccurred())
+	})
+
+	Context("when the config is incomplete", func() {
+		var session *gexec.Session
+
+		BeforeEach(func() {
+			session = runIn("{}", inDestination, 1)
+		})
+
+		It("returns all config errors", func() {
+			errorMessages := string(session.Err.Contents())
+
+			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing uri)"))
+			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing branch)"))
+			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing pool)"))
+		})
 	})
 
 	Context("When a previous version is given", func() {
@@ -61,14 +79,18 @@ var _ = Describe("In", func() {
 				{
 					"source": {
 						"uri": "%s",
-						"branch": "master"
+						"branch": "master",
+						"pool": "lock-pool"
 					},
 					"version": {
 						"ref": "%s"
 					}
 				}`, gitRepo, string(sha))
 
-			output = runIn(jsonIn, inDestination)
+			session := runIn(jsonIn, inDestination, 0)
+
+			err = json.Unmarshal(session.Out.Contents(), &output)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("outputs the metadata for the environment", func() {
