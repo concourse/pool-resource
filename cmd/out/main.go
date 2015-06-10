@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -37,7 +36,7 @@ func main() {
 	if request.Params.Acquire {
 		lock, version, err = pools.AcquireLock(request.Source.Pool)
 		if err != nil {
-			log.Fatalln(err)
+			fatal("acquiring lock", err)
 		}
 	}
 
@@ -45,7 +44,7 @@ func main() {
 		lockPool := filepath.Join(sourceDir, request.Params.Release)
 		lock, version, err = pools.ReleaseLock(lockPool)
 		if err != nil {
-			log.Fatalln(err)
+			fatal("releasing lock", err)
 		}
 	}
 
@@ -56,6 +55,7 @@ func main() {
 			{Name: "pool_name", Value: request.Source.Pool},
 		},
 	})
+
 	if err != nil {
 		fatal("encoding output", err)
 	}

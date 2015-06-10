@@ -38,14 +38,10 @@ if [ -z "$pool_name" ]; then
   config_errors+="invalid payload (missing pool)\n"
 fi
 
-
 if [ -n "$config_errors" ]; then
   echo $config_errors
   exit 1
 fi
-
-
-
 
 branchflag=""
 if [ -n "$branch" ]; then
