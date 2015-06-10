@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/concourse/pool-resource/out"
 	. "github.com/onsi/ginkgo"
@@ -83,7 +82,7 @@ func runOut(request out.OutRequest, sourceDir string) out.OutResponse {
 	json.NewEncoder(stdin).Encode(request)
 	stdin.Close()
 
-	Eventually(session, 5*time.Second).Should(gexec.Exit(0))
+	Eventually(session).Should(gexec.Exit(0))
 
 	err = json.Unmarshal(session.Out.Contents(), &response)
 	Ω(err).ShouldNot(HaveOccurred())

@@ -45,9 +45,9 @@ func (p *Pools) AcquireLock(pool string) (string, out.Version, error) {
 			if err != nil {
 				log.Fatalln(err)
 			}
-		}
 
-		time.Sleep(30 * time.Second)
+			time.Sleep(30 * time.Second)
+		}
 	}
 
 	return lock, out.Version{
