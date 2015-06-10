@@ -187,8 +187,3 @@ func (p *Pools) git(args ...string) ([]byte, error) {
 
 	return cmd.Output()
 }
-
-func fatal(doing string, err error) {
-	println("error " + doing + ": " + err.Error())
-	os.Exit(1)
-}

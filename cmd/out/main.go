@@ -23,6 +23,8 @@ func main() {
 		fatal("reading request", err)
 	}
 
+	validateRequest(request)
+
 	pools := Pools{
 		Source: request.Source,
 	}
@@ -56,5 +58,37 @@ func main() {
 	})
 	if err != nil {
 		fatal("encoding output", err)
+	}
+}
+
+func fatal(doing string, err error) {
+	println("error " + doing + ": " + err.Error())
+	os.Exit(1)
+}
+
+func validateRequest(request out.OutRequest) {
+	var errorMessages []string
+
+	if request.Source.URI == "" {
+		errorMessages = append(errorMessages, "uri is required in the resource source config")
+	}
+
+	if request.Source.Pool == "" {
+		errorMessages = append(errorMessages, "pool is required in the resource source config")
+	}
+
+	if request.Source.Branch == "" {
+		errorMessages = append(errorMessages, "branch is required in the resource source config")
+	}
+
+	if request.Params.Acquire == false && request.Params.Release == "" {
+		errorMessages = append(errorMessages, "acquire or release is required in the put params")
+	}
+
+	if len(errorMessages) > 0 {
+		for _, errorMessage := range errorMessages {
+			println(errorMessage)
+		}
+		os.Exit(1)
 	}
 }

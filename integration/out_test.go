@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 
 	"github.com/concourse/pool-resource/out"
 )
@@ -56,7 +58,26 @@ var _ = Describe("Out", func() {
 	})
 
 	JustBeforeEach(func() {
-		outResponse = runOut(outRequest, sourceDir)
+	})
+
+	Context("when the config is incomplete", func() {
+		var session *gexec.Session
+
+		BeforeEach(func() {
+			outRequest = out.OutRequest{}
+
+			session = runOut(outRequest, sourceDir, 1)
+		})
+
+		It("returns all config errors", func() {
+			errorMessages := string(session.Err.Contents())
+
+			Ω(errorMessages).Should(ContainSubstring("uri is required in the resource source config"))
+			Ω(errorMessages).Should(ContainSubstring("pool is required in the resource source config"))
+			Ω(errorMessages).Should(ContainSubstring("branch is required in the resource source config"))
+			Ω(errorMessages).Should(ContainSubstring("acquire or release is required in the put params"))
+		})
+
 	})
 
 	Context("When acquiring a lock", func() {
@@ -71,6 +92,10 @@ var _ = Describe("Out", func() {
 					Acquire: true,
 				},
 			}
+
+			session := runOut(outRequest, sourceDir, 0)
+			err := json.Unmarshal(session.Out.Contents(), &outResponse)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("moves a lock to claimed", func() {
@@ -125,6 +150,10 @@ var _ = Describe("Out", func() {
 					Acquire: true,
 				},
 			}
+
+			session := runOut(outRequest, sourceDir, 0)
+			err := json.Unmarshal(session.Out.Contents(), &outResponse)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		JustBeforeEach(func() {
@@ -157,7 +186,9 @@ var _ = Describe("Out", func() {
 				},
 			}
 
-			outReleaseResponse = runOut(outReleaseRequest, myLocksGetDir)
+			session := runOut(outReleaseRequest, myLocksGetDir, 0)
+			err = json.Unmarshal(session.Out.Contents(), &outReleaseResponse)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {

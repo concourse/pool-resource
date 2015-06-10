@@ -69,9 +69,7 @@ func runIn(inJson string, destination string) inResponse {
 	return response
 }
 
-func runOut(request out.OutRequest, sourceDir string) out.OutResponse {
-	var response out.OutResponse
-
+func runOut(request out.OutRequest, sourceDir string, expectedExitCode int) *gexec.Session {
 	outCmd := exec.Command(outPath, sourceDir)
 	stdin, err := outCmd.StdinPipe()
 	Ω(err).ShouldNot(HaveOccurred())
@@ -82,12 +80,9 @@ func runOut(request out.OutRequest, sourceDir string) out.OutResponse {
 	json.NewEncoder(stdin).Encode(request)
 	stdin.Close()
 
-	Eventually(session).Should(gexec.Exit(0))
+	Eventually(session).Should(gexec.Exit(expectedExitCode))
 
-	err = json.Unmarshal(session.Out.Contents(), &response)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return response
+	return session
 }
 
 func setupGitRepo(dir string) {
