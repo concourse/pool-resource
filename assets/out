@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+source $(dirname $0)/common.sh
+
+payload=$(mktemp $TMPDIR/pool-resource-request.XXXXXX)
+cat > $payload <&0
+load_pubkey $payload
+
+exec /opt/go/out $1 >&3 < $payload

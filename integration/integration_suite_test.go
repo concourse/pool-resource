@@ -32,7 +32,7 @@ var _ = BeforeSuite(func() {
 
 	pwd, err := os.Getwd()
 	Ω(err).ShouldNot(HaveOccurred())
-	inPath = filepath.Join(pwd, "../in/in")
+	inPath = filepath.Join(pwd, "../assets/in")
 })
 
 type version struct {
@@ -51,6 +51,7 @@ type inResponse struct {
 
 func runIn(inJson string, destination string, expectedExitCode int) *gexec.Session {
 	inCmd := exec.Command(inPath, destination)
+
 	stdin, err := inCmd.StdinPipe()
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -69,6 +70,7 @@ func runIn(inJson string, destination string, expectedExitCode int) *gexec.Sessi
 
 func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 	outCmd := exec.Command(outPath, sourceDir)
+
 	stdin, err := outCmd.StdinPipe()
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -83,7 +85,11 @@ func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 
 func setupGitRepo(dir string) {
 	gitSetup := exec.Command("bash", "-e", "-c", `
-		git init
+	  git init
+
+		git config user.email "ginkgo@localhost"
+		git config user.name "Ginkgo Local"
+
 
 		mkdir -p lock-pool/unclaimed
 		mkdir -p lock-pool/claimed
@@ -101,6 +107,9 @@ func setupGitRepo(dir string) {
 		git commit -m 'test-git-setup'
 	`)
 	gitSetup.Dir = dir
+
+	gitSetup.Stderr = GinkgoWriter
+	gitSetup.Stdout = GinkgoWriter
 
 	err := gitSetup.Run()
 	Ω(err).ShouldNot(HaveOccurred())

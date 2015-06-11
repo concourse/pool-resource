@@ -1,15 +1,51 @@
-# Lock
+# pool-resource
 
-Locks down a given set of jobs so they run sequentially. This is implemented
-with a git repo on the backend, so the configuration is largely the same.
+*a pool of locks (modeling semaphores)*
+
+Allows you to lock environments, pipeline flow, or other entities which have to
+be interacted with in a serial manner.
+
+This resource is backed by a Git repository, so the configuration is largely the
+same as the git-resource.
+
+## Git Repository Structure
+
+```
+.
+├── aws
+│   ├── claimed
+│   │   ├── .gitkeep
+│   │   └── env-2
+│   └── unclaimed
+│       ├── .gitkeep
+│       └── env-1
+├── ping-pong-tables
+│   ├── claimed
+│   │   └── .gitkeep
+│   └── unclaimed
+│       ├── .gitkeep
+│       └── north-table
+└── vsphere
+    ├── claimed
+    │   ├── .gitkeep
+    │   └── f3cb3823-a45a-49e8-ab41-e43268494205
+    └── unclaimed
+        ├── .gitkeep
+        └── 83ed9977-3a10-4c49-a818-2d7a37693da7
+```
+
+This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
+`vsphere`. The `.gitkeep` files are required to keep the `unclaimed` and
+`claimed` directories track-able by Git if there is no files in them.
 
 
 ## Source Configuration
 
 * `uri`: *Required.* The location of the repository.
 
-* `branch`: *Required.* The branch to track. If not specified, the repository's
-  default branch is assumed.
+* `branch`: *Required.* The branch to track.
+
+* `pool`: *Required.* The logical name of your pool of things to lock.
 
 * `private_key`: *Optional.* Private key to use when pulling/pushing.
     Example:
@@ -22,32 +58,76 @@ with a git repo on the backend, so the configuration is largely the same.
       -----END RSA PRIVATE KEY-----
     ```
 
-* `paths`: *Optional.* If specified (as a list of glob patterns), only changes
-  to the specified files will yield new versions.
-
-* `ignore_paths`: *Optional.* The inverse of `paths`; changes to the specified
-  files are ignored.
+* `retry_delay`: *Optional.* If specified, dictates how long to wait until
+  retrying to acquire a lock or release a lock. The default is 10 seconds.
 
 
 ## Behavior
 
 ### `check`: Check for new commits.
 
-The repository is cloned (or pulled if already present), and any commits
-made after the given version are returned. If no version is given, the ref
-for `HEAD` is returned.
+The repository is cloned (or pulled if already present), and any commits made
+after the given version for the specified pool are returned. If no version is
+given, the ref for `HEAD` is returned.
 
 
 ### `in`: Clone the repository, at the given ref.
 
+Outputs 2 files:
 
+* `metadata`: Contains the contents of whatever was in your lock file. This is
+  useful for environment configuration settings.
 
-#### Parameters
-
+* `name`: Contains the name of lock that was acquired.
 
 
 ### `out`: Push to a repository.
 
+Either claims or releases a lock and pushes to the repository.
 
 #### Parameters
 
+One of the following is required.
+
+* `acquire`: If true, we will attempt to move a file from your unclaimed lock
+  pool to claimed. We will try to acquire a lock until one is made available.
+
+* `release`: If set, we will release the lock by moving it from claimed to
+  unclaimed. The values is the name of the get task that had the lock passed
+  from the previous job. This means that you need to *get* the pool-resource
+  first **before** releasing a lock.
+
+
+## Example Concourse Configuration
+
+The following example pipeline models acquiring, passing through, and releasing
+a lock based on the example git repository structure:
+
+```
+resources:
+- name: aws-environments
+  type: pool-resource
+  source:
+    uri: git@github.com:concourse/locks.git
+    branch: master
+    pool: aws
+
+jobs:
+- name: deploy-aws
+  plan:
+    - put: aws-environments
+      params:
+        acquire: true
+    - task: deploy-aws
+      file: my-scripts/deploy-aws.yml
+
+- name: test-aws
+  plan:
+    - get: aws-environments
+      passed: [deploy-aws]
+    - task: test-aws
+      file: my-scripts/test-aws.yml
+    - put: aws-environments
+      params:
+        release: aws-environments
+```

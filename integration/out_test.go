@@ -83,9 +83,10 @@ var _ = Describe("Out", func() {
 		BeforeEach(func() {
 			outRequest = out.OutRequest{
 				Source: out.Source{
-					URI:    bareGitRepo,
-					Branch: "master",
-					Pool:   "lock-pool",
+					URI:        bareGitRepo,
+					Branch:     "master",
+					Pool:       "lock-pool",
+					RetryDelay: 100 * time.Millisecond,
 				},
 				Params: out.OutParams{
 					Acquire: true,
@@ -144,9 +145,10 @@ var _ = Describe("Out", func() {
 
 			outRequest = out.OutRequest{
 				Source: out.Source{
-					URI:    bareGitRepo,
-					Branch: "master",
-					Pool:   "lock-pool",
+					URI:        bareGitRepo,
+					Branch:     "master",
+					Pool:       "lock-pool",
+					RetryDelay: 1 * time.Second,
 				},
 				Params: out.OutParams{
 					Acquire: true,
@@ -158,11 +160,17 @@ var _ = Describe("Out", func() {
 
 			claimAllLocks := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
 				git clone %s .
+
+				git config user.email "ginkgo@localhost"
+				git config user.name "Ginkgo Local"
+
 				git mv lock-pool/unclaimed/* lock-pool/claimed/
 				git commit -am "claiming all locks"
 				git push
 			`, bareGitRepo))
 
+			claimAllLocks.Stdout = GinkgoWriter
+			claimAllLocks.Stderr = GinkgoWriter
 			claimAllLocks.Dir = claimAllLocksDir
 
 			err = claimAllLocks.Run()
@@ -177,7 +185,7 @@ var _ = Describe("Out", func() {
 		})
 
 		It("retries until a lock can be claimed", func() {
-			Consistently(session, 11*time.Second).ShouldNot(gexec.Exit(0))
+			Consistently(session, 2*time.Second).ShouldNot(gexec.Exit(0))
 
 			releaseLock := exec.Command("bash", "-e", "-c", fmt.Sprint(`
 				git mv lock-pool/claimed/some-lock lock-pool/unclaimed/some-lock
@@ -190,7 +198,7 @@ var _ = Describe("Out", func() {
 			err := releaseLock.Run()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(session, 20*time.Second).Should(gexec.Exit(0))
+			Eventually(session, 2*time.Second).Should(gexec.Exit(0))
 
 			err = json.Unmarshal(session.Out.Contents(), &outResponse)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -303,4 +311,5 @@ var _ = Describe("Out", func() {
 			}))
 		})
 	})
+
 })

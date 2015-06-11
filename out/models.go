@@ -1,10 +1,13 @@
 package out
 
+import "time"
+
 type Source struct {
-	URI        string `json:"uri"`
-	Branch     string `json:"branch"`
-	PrivateKey string `json:"private_key"`
-	Pool       string `json:"pool"`
+	URI        string        `json:"uri"`
+	Branch     string        `json:"branch"`
+	PrivateKey string        `json:"private_key"`
+	Pool       string        `json:"pool"`
+	RetryDelay time.Duration `json:"retry_delay"`
 }
 
 type Version struct {

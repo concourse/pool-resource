@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/concourse/pool-resource/out"
 )
@@ -24,9 +25,11 @@ func main() {
 
 	validateRequest(request)
 
-	pools := Pools{
-		Source: request.Source,
+	if request.Source.RetryDelay == 0 {
+		request.Source.RetryDelay = 10 * time.Second
 	}
+
+	lockPool := out.NewLockPool(request.Source, os.Stderr)
 
 	var (
 		lock    string
@@ -34,15 +37,15 @@ func main() {
 	)
 
 	if request.Params.Acquire {
-		lock, version, err = pools.AcquireLock(request.Source.Pool)
+		lock, version, err = lockPool.AcquireLock(request.Source.Pool)
 		if err != nil {
 			fatal("acquiring lock", err)
 		}
 	}
 
 	if request.Params.Release != "" {
-		lockPool := filepath.Join(sourceDir, request.Params.Release)
-		lock, version, err = pools.ReleaseLock(lockPool)
+		poolName := filepath.Join(sourceDir, request.Params.Release)
+		lock, version, err = lockPool.ReleaseLock(poolName)
 		if err != nil {
 			fatal("releasing lock", err)
 		}
