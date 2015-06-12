@@ -64,15 +64,15 @@ changed_filename=$(basename $changed_filepath)
 jq -n "{
   version: {ref: $(git rev-parse HEAD | jq -R .)},
   metadata: [{
-    \"name\": \"lock_name\",
-    \"value\": \"$changed_filename\"
+    name: \"lock_name\",
+    value: $(echo $changed_filename | jq -R .)
   },{
-    \"name\": \"pool_name\",
-    \"value\": \"$pool_name\"
+    name: \"pool_name\",
+    value: $(echo $pool_name | jq -R .)
   }]
 }" >&3
 
 mkdir -p $1
 
-cat ${changed_filepath} > ${1}/metadata
+cat $pool_name/*/${changed_filename} > ${1}/metadata
 echo ${changed_filename} > ${1}/name
