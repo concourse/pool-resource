@@ -30,15 +30,16 @@ func NewLockPool(source Source, output io.Writer) LockPool {
 //go:generate counterfeiter . LockHandler
 
 type LockHandler interface {
-	GrabAvailableLock(pool string) (lock string, version string, err error)
+	GrabAvailableLock() (lock string, version string, err error)
 	UnclaimLock(lock string) (version string, err error)
+	AddLock(lock string, contents []byte) (version string, err error)
 
 	Setup() error
 	BroadcastLockPool() error
 	ResetLock() error
 }
 
-func (lp *LockPool) AcquireLock(pool string) (string, Version, error) {
+func (lp *LockPool) AcquireLock() (string, Version, error) {
 	err := lp.LockHandler.Setup()
 	if err != nil {
 		return "", Version{}, err
@@ -49,16 +50,15 @@ func (lp *LockPool) AcquireLock(pool string) (string, Version, error) {
 		ref  string
 	)
 
-	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", pool)
+	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", lp.Source.Pool)
 
 	for {
 		err = lp.LockHandler.ResetLock()
-
 		if err != nil {
 			return "", Version{}, err
 		}
 
-		lock, ref, err = lp.LockHandler.GrabAvailableLock(pool)
+		lock, ref, err = lp.LockHandler.GrabAvailableLock()
 
 		if err == ErrNoLocksAvailable {
 			fmt.Fprint(lp.Output, ".")
@@ -67,7 +67,7 @@ func (lp *LockPool) AcquireLock(pool string) (string, Version, error) {
 		}
 
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to acquire lock on pool: %s! (err: %s) retrying...\n", pool, err)
+			fmt.Fprintf(lp.Output, "failed to acquire lock on pool: %s! (err: %s) retrying...\n", lp.Source.Pool, err)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
@@ -88,7 +88,6 @@ func (lp *LockPool) AcquireLock(pool string) (string, Version, error) {
 }
 
 func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
-
 	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
 		return "", Version{}, err
@@ -109,6 +108,55 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 
 		if err != nil {
 			fmt.Fprintf(lp.Output, "failed to unclaim the lock: %s! (err: %s) retrying...\n", lockName, err)
+			time.Sleep(lp.Source.RetryDelay)
+			continue
+		}
+
+		err = lp.LockHandler.BroadcastLockPool()
+		if err != nil {
+			fmt.Fprintf(lp.Output, "failed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			time.Sleep(lp.Source.RetryDelay)
+			continue
+		}
+
+		break
+	}
+
+	return lockName, Version{
+		Ref: strings.TrimSpace(ref),
+	}, nil
+}
+
+func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
+	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	if err != nil {
+		return "", Version{}, fmt.Errorf("could not read the name file of your lock: %s", err)
+	}
+
+	lockName := strings.TrimSpace(string(nameFileContents))
+
+	lockContents, err := ioutil.ReadFile(filepath.Join(inDir, "metadata"))
+	if err != nil {
+		return "", Version{}, fmt.Errorf("could not read the metadata file of your lock: %s", err)
+	}
+
+	fmt.Fprintf(lp.Output, "adding lock: %s to pool: %s\n", lockName, lp.Source.Pool)
+
+	err = lp.LockHandler.Setup()
+	if err != nil {
+		return "", Version{}, err
+	}
+
+	var ref string
+	for {
+		err = lp.LockHandler.ResetLock()
+		if err != nil {
+			return "", Version{}, err
+		}
+
+		ref, err = lp.LockHandler.AddLock(lockName, lockContents)
+		if err != nil {
+			fmt.Fprintf(lp.Output, "failed to add the lock: %s! (err: %s) retrying...\n", lockName, err)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}

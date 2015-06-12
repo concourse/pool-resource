@@ -8,11 +8,9 @@ import (
 )
 
 type FakeLockHandler struct {
-	GrabAvailableLockStub        func(pool string) (lock string, version string, err error)
+	GrabAvailableLockStub        func() (lock string, version string, err error)
 	grabAvailableLockMutex       sync.RWMutex
-	grabAvailableLockArgsForCall []struct {
-		pool string
-	}
+	grabAvailableLockArgsForCall []struct{}
 	grabAvailableLockReturns struct {
 		result1 string
 		result2 string
@@ -24,6 +22,16 @@ type FakeLockHandler struct {
 		lock string
 	}
 	unclaimLockReturns struct {
+		result1 string
+		result2 error
+	}
+	AddLockStub        func(lock string, contents []byte) (version string, err error)
+	addLockMutex       sync.RWMutex
+	addLockArgsForCall []struct {
+		lock     string
+		contents []byte
+	}
+	addLockReturns struct {
 		result1 string
 		result2 error
 	}
@@ -47,14 +55,12 @@ type FakeLockHandler struct {
 	}
 }
 
-func (fake *FakeLockHandler) GrabAvailableLock(pool string) (lock string, version string, err error) {
+func (fake *FakeLockHandler) GrabAvailableLock() (lock string, version string, err error) {
 	fake.grabAvailableLockMutex.Lock()
-	fake.grabAvailableLockArgsForCall = append(fake.grabAvailableLockArgsForCall, struct {
-		pool string
-	}{pool})
+	fake.grabAvailableLockArgsForCall = append(fake.grabAvailableLockArgsForCall, struct{}{})
 	fake.grabAvailableLockMutex.Unlock()
 	if fake.GrabAvailableLockStub != nil {
-		return fake.GrabAvailableLockStub(pool)
+		return fake.GrabAvailableLockStub()
 	} else {
 		return fake.grabAvailableLockReturns.result1, fake.grabAvailableLockReturns.result2, fake.grabAvailableLockReturns.result3
 	}
@@ -64,12 +70,6 @@ func (fake *FakeLockHandler) GrabAvailableLockCallCount() int {
 	fake.grabAvailableLockMutex.RLock()
 	defer fake.grabAvailableLockMutex.RUnlock()
 	return len(fake.grabAvailableLockArgsForCall)
-}
-
-func (fake *FakeLockHandler) GrabAvailableLockArgsForCall(i int) string {
-	fake.grabAvailableLockMutex.RLock()
-	defer fake.grabAvailableLockMutex.RUnlock()
-	return fake.grabAvailableLockArgsForCall[i].pool
 }
 
 func (fake *FakeLockHandler) GrabAvailableLockReturns(result1 string, result2 string, result3 error) {
@@ -109,6 +109,40 @@ func (fake *FakeLockHandler) UnclaimLockArgsForCall(i int) string {
 func (fake *FakeLockHandler) UnclaimLockReturns(result1 string, result2 error) {
 	fake.UnclaimLockStub = nil
 	fake.unclaimLockReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeLockHandler) AddLock(lock string, contents []byte) (version string, err error) {
+	fake.addLockMutex.Lock()
+	fake.addLockArgsForCall = append(fake.addLockArgsForCall, struct {
+		lock     string
+		contents []byte
+	}{lock, contents})
+	fake.addLockMutex.Unlock()
+	if fake.AddLockStub != nil {
+		return fake.AddLockStub(lock, contents)
+	} else {
+		return fake.addLockReturns.result1, fake.addLockReturns.result2
+	}
+}
+
+func (fake *FakeLockHandler) AddLockCallCount() int {
+	fake.addLockMutex.RLock()
+	defer fake.addLockMutex.RUnlock()
+	return len(fake.addLockArgsForCall)
+}
+
+func (fake *FakeLockHandler) AddLockArgsForCall(i int) (string, []byte) {
+	fake.addLockMutex.RLock()
+	defer fake.addLockMutex.RUnlock()
+	return fake.addLockArgsForCall[i].lock, fake.addLockArgsForCall[i].contents
+}
+
+func (fake *FakeLockHandler) AddLockReturns(result1 string, result2 error) {
+	fake.AddLockStub = nil
+	fake.addLockReturns = struct {
 		result1 string
 		result2 error
 	}{result1, result2}

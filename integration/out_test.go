@@ -61,22 +61,71 @@ var _ = Describe("Out", func() {
 		var session *gexec.Session
 
 		BeforeEach(func() {
-			outRequest = out.OutRequest{}
+			outRequest = out.OutRequest{
+				Source: out.Source{
+					URI:        bareGitRepo,
+					Branch:     "master",
+					Pool:       "lock-pool",
+					RetryDelay: 100 * time.Millisecond,
+				},
+				Params: out.OutParams{
+					Acquire: true,
+				},
+			}
+		})
 
+		JustBeforeEach(func() {
 			session = runOut(outRequest, sourceDir)
 			Eventually(session).Should(gexec.Exit(1))
-
 		})
 
-		It("returns all config errors", func() {
-			errorMessages := string(session.Err.Contents())
+		Context("when the uri isn't set", func() {
+			BeforeEach(func() {
+				outRequest.Source.URI = ""
+			})
 
-			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing uri)"))
-			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing pool)"))
-			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing branch)"))
-			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire or release)"))
+			It("complains about it", func() {
+				errorMessages := string(session.Err.Contents())
+
+				Ω(errorMessages).Should(ContainSubstring("invalid payload (missing uri)"))
+			})
 		})
 
+		Context("when the pool isn't set", func() {
+			BeforeEach(func() {
+				outRequest.Source.Pool = ""
+			})
+
+			It("complains about it", func() {
+				errorMessages := string(session.Err.Contents())
+
+				Ω(errorMessages).Should(ContainSubstring("invalid payload (missing pool)"))
+			})
+		})
+
+		Context("when the branch isn't set", func() {
+			BeforeEach(func() {
+				outRequest.Source.Branch = ""
+			})
+
+			It("complains about it", func() {
+				errorMessages := string(session.Err.Contents())
+
+				Ω(errorMessages).Should(ContainSubstring("invalid payload (missing branch)"))
+			})
+		})
+
+		Context("when the branch isn't set", func() {
+			BeforeEach(func() {
+				outRequest.Params = out.OutParams{}
+			})
+
+			It("complains about it", func() {
+				errorMessages := string(session.Err.Contents())
+
+				Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, or add)"))
+			})
+		})
 	})
 
 	Context("When acquiring a lock", func() {
@@ -312,4 +361,66 @@ var _ = Describe("Out", func() {
 		})
 	})
 
+	Context("when adding a lock to the pool", func() {
+		var lockToAddDir string
+		var cloneDir string
+
+		BeforeEach(func() {
+			lockToAddDir, err := ioutil.TempDir("", "lock-to-add")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			cloneDir, err = ioutil.TempDir("", "clone")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			taskDir := filepath.Join(lockToAddDir, "task-name")
+			err = os.Mkdir(taskDir, 0755)
+
+			err = ioutil.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = ioutil.WriteFile(filepath.Join(taskDir, "name"), []byte("added-lock-name"), 0555)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			outRequest = out.OutRequest{
+				Source: out.Source{
+					URI:        bareGitRepo,
+					Branch:     "master",
+					Pool:       "lock-pool",
+					RetryDelay: 100 * time.Millisecond,
+				},
+				Params: out.OutParams{
+					Add: "task-name",
+				},
+			}
+
+			session := runOut(outRequest, lockToAddDir)
+			Eventually(session).Should(gexec.Exit(0))
+
+			err = json.Unmarshal(session.Out.Contents(), &outResponse)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(lockToAddDir)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = os.RemoveAll(cloneDir)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("adds the new lock", func() {
+			clone := exec.Command("git", "clone", bareGitRepo, ".")
+			clone.Dir = cloneDir
+			err := clone.Run()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			lockPath := filepath.Join(cloneDir, "lock-pool", "unclaimed", "added-lock-name")
+
+			Ω(lockPath).Should(BeARegularFile())
+			contents, err := ioutil.ReadFile(lockPath)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(string(contents)).Should(Equal("hello"))
+		})
+	})
 })

@@ -17,6 +17,7 @@ type Version struct {
 type OutParams struct {
 	Release string `json:"release"`
 	Acquire bool   `json:"acquire"`
+	Add     string `json:"add"`
 }
 
 type OutRequest struct {

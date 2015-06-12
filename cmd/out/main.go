@@ -37,7 +37,7 @@ func main() {
 	)
 
 	if request.Params.Acquire {
-		lock, version, err = lockPool.AcquireLock(request.Source.Pool)
+		lock, version, err = lockPool.AcquireLock()
 		if err != nil {
 			fatal("acquiring lock", err)
 		}
@@ -48,6 +48,14 @@ func main() {
 		lock, version, err = lockPool.ReleaseLock(poolName)
 		if err != nil {
 			fatal("releasing lock", err)
+		}
+	}
+
+	if request.Params.Add != "" {
+		lockPath := filepath.Join(sourceDir, request.Params.Add)
+		lock, version, err = lockPool.AddLock(lockPath)
+		if err != nil {
+			fatal("adding lock", err)
 		}
 	}
 
@@ -84,8 +92,8 @@ func validateRequest(request out.OutRequest) {
 		errorMessages = append(errorMessages, "invalid payload (missing branch)")
 	}
 
-	if request.Params.Acquire == false && request.Params.Release == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing acquire or release)")
+	if request.Params.Acquire == false && request.Params.Release == "" && request.Params.Add == "" {
+		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, or add)")
 	}
 
 	if len(errorMessages) > 0 {

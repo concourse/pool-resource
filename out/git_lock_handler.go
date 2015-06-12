@@ -58,6 +58,30 @@ func (glh *GitLockHandler) ResetLock() error {
 	return nil
 }
 
+func (glh *GitLockHandler) AddLock(lock string, contents []byte) (string, error) {
+	pool := filepath.Join(glh.dir, glh.Source.Pool)
+	lockPath := filepath.Join(pool, "unclaimed", lock)
+
+	err := ioutil.WriteFile(lockPath, contents, 0555)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = glh.git("add", lockPath)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = glh.git("commit", lockPath, "-m", fmt.Sprintf("adding: %s", lock))
+	if err != nil {
+		return "", err
+	}
+
+	ref, err := glh.git("rev-parse", "HEAD")
+
+	return string(ref), nil
+}
+
 func (glh *GitLockHandler) Setup() error {
 	var err error
 
@@ -85,10 +109,10 @@ func (glh *GitLockHandler) Setup() error {
 	return nil
 }
 
-func (glh *GitLockHandler) GrabAvailableLock(pool string) (string, string, error) {
+func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 	var files []os.FileInfo
 
-	allFiles, err := ioutil.ReadDir(filepath.Join(glh.dir, pool, "unclaimed"))
+	allFiles, err := ioutil.ReadDir(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed"))
 	if err != nil {
 		return "", "", err
 	}
@@ -108,7 +132,7 @@ func (glh *GitLockHandler) GrabAvailableLock(pool string) (string, string, error
 	index := rand.Int() % len(files)
 	name := filepath.Base(files[index].Name())
 
-	_, err = glh.git("mv", filepath.Join(pool, "unclaimed", name), filepath.Join(pool, "claimed", name))
+	_, err = glh.git("mv", filepath.Join(glh.Source.Pool, "unclaimed", name), filepath.Join(glh.Source.Pool, "claimed", name))
 	if err != nil {
 		return "", "", err
 	}
