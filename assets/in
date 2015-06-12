@@ -59,7 +59,7 @@ git log -1 --oneline
 git clean --force --force -d
 
 changed_filepath=$(git diff --name-only HEAD~1 | head -1)
-changed_filename=$(echo $changed_filepath | rev | cut -d "/" -f 1 | rev)
+changed_filename=$(basename $changed_filepath)
 
 jq -n "{
   version: {ref: $(git rev-parse HEAD | jq -R .)},
