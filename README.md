@@ -93,9 +93,14 @@ One of the following is required.
   pool to claimed. We will try to acquire a lock until one is made available.
 
 * `release`: If set, we will release the lock by moving it from claimed to
-  unclaimed. The values is the name of the get task that had the lock passed
+  unclaimed. The value is the name of the get task that had the lock passed
   from the previous job. This means that you need to *get* the pool-resource
   first **before** releasing a lock.
+
+* `add`: If set, we will add a new lock to the pool in the unclaimed state. The
+  value is the path to a directory containing the files `name` and `metadata`
+  which should contain the name of your new lock and the contents you would like
+  in the lock, respectively.
 
 
 ## Example Concourse Configuration
