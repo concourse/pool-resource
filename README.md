@@ -111,7 +111,7 @@ a lock based on the example git repository structure:
 ```
 resources:
 - name: aws-environments
-  type: pool-resource
+  type: pool
   source:
     uri: git@github.com:concourse/locks.git
     branch: master
