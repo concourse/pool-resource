@@ -105,6 +105,8 @@ func setupGitRepo(dir string) {
 
 		git add .
 		git commit -m 'test-git-setup'
+		git checkout -b another-branch
+		git checkout master
 	`)
 	gitSetup.Dir = dir
 

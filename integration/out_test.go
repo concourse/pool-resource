@@ -183,6 +183,63 @@ var _ = Describe("Out", func() {
 				},
 			}))
 		})
+
+		Context("on a different branch", func() {
+			BeforeEach(func() {
+				outRequest = out.OutRequest{
+					Source: out.Source{
+						URI:        bareGitRepo,
+						Branch:     "another-branch",
+						Pool:       "lock-pool",
+						RetryDelay: 100 * time.Millisecond,
+					},
+					Params: out.OutParams{
+						Acquire: true,
+					},
+				}
+
+				session := runOut(outRequest, sourceDir)
+				Eventually(session).Should(gexec.Exit(0))
+
+				err := json.Unmarshal(session.Out.Contents(), &outResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("moves a lock to claimed", func() {
+				version := getVersion(bareGitRepo)
+
+				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer os.RemoveAll(reCloneRepo)
+
+				reClone := exec.Command("git", "clone", bareGitRepo, ".")
+				reClone.Dir = reCloneRepo
+				err = reClone.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(len(claimedFiles)).Should(Equal(2))
+
+				var lockFile string
+				for _, file := range claimedFiles {
+					filename := filepath.Base(file.Name())
+					if filename != ".gitkeep" {
+						lockFile = filename
+					}
+				}
+
+				Ω(outResponse).Should(Equal(out.OutResponse{
+					Version: version,
+					Metadata: []out.MetadataPair{
+						{Name: "lock_name", Value: lockFile},
+						{Name: "pool_name", Value: "lock-pool"},
+					},
+				}))
+			})
+		})
 	})
 
 	Context("when there are no locks to be claimed", func() {

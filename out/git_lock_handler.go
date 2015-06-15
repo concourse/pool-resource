@@ -148,7 +148,7 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 }
 
 func (glh *GitLockHandler) BroadcastLockPool() error {
-	_, err := glh.git("push", "origin", glh.Source.Branch)
+	_, err := glh.git("push", "origin", "HEAD:"+glh.Source.Branch)
 	return err
 }
 
