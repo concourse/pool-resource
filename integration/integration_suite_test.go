@@ -117,7 +117,7 @@ func setupGitRepo(dir string) {
 	Ω(err).ShouldNot(HaveOccurred())
 }
 
-func getVersion(gitURI string) out.Version {
+func getVersion(gitURI string, ref string) out.Version {
 	gitVersionRepo, err := ioutil.TempDir("", "git-version-repo")
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -128,7 +128,7 @@ func getVersion(gitURI string) out.Version {
 	err = gitSetup.Run()
 	Ω(err).ShouldNot(HaveOccurred())
 
-	gitVersion := exec.Command("git", "rev-parse", "HEAD")
+	gitVersion := exec.Command("git", "rev-parse", ref)
 	gitVersion.Dir = gitVersionRepo
 	sha, err := gitVersion.Output()
 	Ω(err).ShouldNot(HaveOccurred())

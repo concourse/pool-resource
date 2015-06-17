@@ -150,7 +150,7 @@ var _ = Describe("Out", func() {
 		})
 
 		It("moves a lock to claimed", func() {
-			version := getVersion(bareGitRepo)
+			version := getVersion(bareGitRepo, "HEAD")
 
 			reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -206,14 +206,18 @@ var _ = Describe("Out", func() {
 			})
 
 			It("moves a lock to claimed", func() {
-				version := getVersion(bareGitRepo)
+				version := getVersion(bareGitRepo, "origin/another-branch")
 
 				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				defer os.RemoveAll(reCloneRepo)
 
-				reClone := exec.Command("git", "clone", bareGitRepo, ".")
+				reClone := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
+						git clone %s .
+						git checkout another-branch
+				`, bareGitRepo))
+
 				reClone.Dir = reCloneRepo
 				err = reClone.Run()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -389,7 +393,7 @@ var _ = Describe("Out", func() {
 		})
 
 		It("moves the lock to unclaimed", func() {
-			version := getVersion(bareGitRepo)
+			version := getVersion(bareGitRepo, "HEAD")
 
 			claimedFiles, err := ioutil.ReadDir(filepath.Join(gitRepo, "lock-pool", "claimed"))
 			Ω(err).ShouldNot(HaveOccurred())
