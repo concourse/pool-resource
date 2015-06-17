@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 
 	"github.com/concourse/pool-resource/out"
 	fakes "github.com/concourse/pool-resource/out/fakes"
@@ -17,9 +18,12 @@ import (
 var _ = Describe("Lock Pool", func() {
 	var lockPool out.LockPool
 	var fakeLockHandler *fakes.FakeLockHandler
+	var output *gbytes.Buffer
 
 	BeforeEach(func() {
 		fakeLockHandler = new(fakes.FakeLockHandler)
+
+		output = gbytes.NewBuffer()
 
 		lockPool = out.LockPool{
 			Source: out.Source{
@@ -28,7 +32,7 @@ var _ = Describe("Lock Pool", func() {
 				Branch:     "some-branch",
 				RetryDelay: 100 * time.Millisecond,
 			},
-			Output:      GinkgoWriter,
+			Output:      output,
 			LockHandler: fakeLockHandler,
 		}
 	})
@@ -85,24 +89,13 @@ var _ = Describe("Lock Pool", func() {
 
 				Context("when unclaiming the lock fails", func() {
 					BeforeEach(func() {
-						called := false
-
-						fakeLockHandler.UnclaimLockStub = func(lockName string) (string, error) {
-							// succeed on second call
-							if !called {
-								called = true
-								return "", errors.New("disaster")
-							} else {
-								return "some-ref", nil
-							}
-						}
+						fakeLockHandler.UnclaimLockReturns("", errors.New("disaster"))
 					})
 
-					It("does not return an error as it retries", func() {
+					It("returns an error", func() {
 						_, _, err := lockPool.ReleaseLock(lockDir)
-						Ω(err).ShouldNot(HaveOccurred())
-
-						Ω(fakeLockHandler.UnclaimLockCallCount()).Should(Equal(2))
+						Ω(err).Should(HaveOccurred())
+						Ω(fakeLockHandler.UnclaimLockCallCount()).Should(Equal(1))
 					})
 				})
 
@@ -118,27 +111,58 @@ var _ = Describe("Lock Pool", func() {
 						Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(1))
 					})
 
-					Context("when broadcasting fails", func() {
-						BeforeEach(func() {
-							called := false
+					Context("when broadcasting fails with ", func() {
+						Context("for an unexpected reason", func() {
+							BeforeEach(func() {
+								called := false
 
-							fakeLockHandler.BroadcastLockPoolStub = func() error {
-								// succeed on second call
-								if !called {
-									called = true
-									return errors.New("disaster")
-								} else {
-									return nil
+								fakeLockHandler.BroadcastLockPoolStub = func() error {
+									// succeed on second call
+									if !called {
+										called = true
+										return errors.New("disaster")
+									} else {
+										return nil
+									}
 								}
-							}
+							})
+
+							It("logs an error as it retries", func() {
+								_, _, err := lockPool.ReleaseLock(lockDir)
+								Ω(err).ShouldNot(HaveOccurred())
+
+								Ω(output).Should(gbytes.Say("err"))
+
+								Ω(fakeLockHandler.UnclaimLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+							})
 						})
 
-						It("does not return an error as it retries", func() {
-							_, _, err := lockPool.ReleaseLock(lockDir)
-							Ω(err).ShouldNot(HaveOccurred())
+						Context("for an expected reason", func() {
+							BeforeEach(func() {
+								called := false
 
-							Ω(fakeLockHandler.UnclaimLockCallCount()).Should(Equal(2))
-							Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+								fakeLockHandler.BroadcastLockPoolStub = func() error {
+									// succeed on second call
+									if !called {
+										called = true
+										return out.ErrLockConflict
+									} else {
+										return nil
+									}
+								}
+							})
+
+							It("does not log an error as it retries", func() {
+								_, _, err := lockPool.ReleaseLock(lockDir)
+								Ω(err).ShouldNot(HaveOccurred())
+
+								// no logging for expected errors
+								Ω(output).ShouldNot(gbytes.Say("err"))
+
+								Ω(fakeLockHandler.UnclaimLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+							})
 						})
 					})
 
@@ -246,26 +270,58 @@ var _ = Describe("Lock Pool", func() {
 					})
 
 					Context("when broadcasting fails", func() {
-						BeforeEach(func() {
-							called := false
+						Context("with a known error", func() {
+							BeforeEach(func() {
+								called := false
 
-							fakeLockHandler.BroadcastLockPoolStub = func() error {
-								// succeed on second call
-								if !called {
-									called = true
-									return errors.New("disaster")
-								} else {
-									return nil
+								fakeLockHandler.BroadcastLockPoolStub = func() error {
+									// succeed on second call
+									if !called {
+										called = true
+										return out.ErrLockConflict
+									} else {
+										return nil
+									}
 								}
-							}
+							})
+
+							It("does not log an error as it retries", func() {
+								_, _, err := lockPool.AddLock(lockDir)
+								Ω(err).ShouldNot(HaveOccurred())
+
+								// no logging for expected errors
+								Ω(output).ShouldNot(gbytes.Say("err"))
+
+								Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+							})
 						})
 
-						It("does not return an error as it retries", func() {
-							_, _, err := lockPool.AddLock(lockDir)
-							Ω(err).ShouldNot(HaveOccurred())
+						Context("with an unknown error", func() {
+							BeforeEach(func() {
+								called := false
 
-							Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
-							Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+								fakeLockHandler.BroadcastLockPoolStub = func() error {
+									// succeed on second call
+									if !called {
+										called = true
+										return errors.New("disaster")
+									} else {
+										return nil
+									}
+								}
+							})
+
+							It("logs an error as it retries", func() {
+								_, _, err := lockPool.AddLock(lockDir)
+								Ω(err).ShouldNot(HaveOccurred())
+
+								// no logging for expected errors
+								Ω(output).Should(gbytes.Say("err"))
+
+								Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+							})
 						})
 					})
 

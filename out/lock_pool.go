@@ -114,14 +114,20 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 		ref, err = lp.LockHandler.UnclaimLock(lockName)
 
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to unclaim the lock: %s! (err: %s) retrying...\n", lockName, err)
+			fmt.Fprintf(lp.Output, "\nfailed to unclaim the lock: %s! (err: %s) retrying...\n", lockName, err)
+			return "", Version{}, err
+		}
+
+		err = lp.LockHandler.BroadcastLockPool()
+
+		if err == ErrLockConflict {
+			fmt.Fprint(lp.Output, ".")
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
 
-		err = lp.LockHandler.BroadcastLockPool()
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
@@ -169,8 +175,15 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 		}
 
 		err = lp.LockHandler.BroadcastLockPool()
+
+		if err == ErrLockConflict {
+			fmt.Fprint(lp.Output, ".")
+			time.Sleep(lp.Source.RetryDelay)
+			continue
+		}
+
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
