@@ -67,7 +67,7 @@ var _ = Describe("Out", func() {
 			outRequest = out.OutRequest{
 				Source: out.Source{
 					URI:        bareGitRepo,
-					Branch:     "master",
+					Branch:     "another-branch",
 					Pool:       "lock-pool",
 					RetryDelay: 100 * time.Millisecond,
 				},
@@ -136,7 +136,7 @@ var _ = Describe("Out", func() {
 			outRequest = out.OutRequest{
 				Source: out.Source{
 					URI:        bareGitRepo,
-					Branch:     "master",
+					Branch:     "another-branch",
 					Pool:       "lock-pool",
 					RetryDelay: 100 * time.Millisecond,
 				},
@@ -153,14 +153,14 @@ var _ = Describe("Out", func() {
 		})
 
 		It("moves a lock to claimed", func() {
-			version := getVersion(bareGitRepo, "HEAD")
+			version := getVersion(bareGitRepo, "origin/another-branch")
 
 			reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			defer os.RemoveAll(reCloneRepo)
 
-			reClone := exec.Command("git", "clone", bareGitRepo, ".")
+			reClone := exec.Command("git", "clone", "--branch", "another-branch", bareGitRepo, ".")
 			reClone.Dir = reCloneRepo
 			err = reClone.Run()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -186,67 +186,6 @@ var _ = Describe("Out", func() {
 				},
 			}))
 		})
-
-		Context("on a different branch", func() {
-			BeforeEach(func() {
-				outRequest = out.OutRequest{
-					Source: out.Source{
-						URI:        bareGitRepo,
-						Branch:     "another-branch",
-						Pool:       "lock-pool",
-						RetryDelay: 100 * time.Millisecond,
-					},
-					Params: out.OutParams{
-						Acquire: true,
-					},
-				}
-
-				session := runOut(outRequest, sourceDir)
-				Eventually(session).Should(gexec.Exit(0))
-
-				err := json.Unmarshal(session.Out.Contents(), &outResponse)
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			It("moves a lock to claimed", func() {
-				version := getVersion(bareGitRepo, "origin/another-branch")
-
-				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
-				Ω(err).ShouldNot(HaveOccurred())
-
-				defer os.RemoveAll(reCloneRepo)
-
-				reClone := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
-						git clone %s .
-						git checkout another-branch
-				`, bareGitRepo))
-
-				reClone.Dir = reCloneRepo
-				err = reClone.Run()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(len(claimedFiles)).Should(Equal(2))
-
-				var lockFile string
-				for _, file := range claimedFiles {
-					filename := filepath.Base(file.Name())
-					if filename != ".gitkeep" {
-						lockFile = filename
-					}
-				}
-
-				Ω(outResponse).Should(Equal(out.OutResponse{
-					Version: version,
-					Metadata: []out.MetadataPair{
-						{Name: "lock_name", Value: lockFile},
-						{Name: "pool_name", Value: "lock-pool"},
-					},
-				}))
-			})
-		})
 	})
 
 	Context("when there are no locks to be claimed", func() {
@@ -259,7 +198,7 @@ var _ = Describe("Out", func() {
 			outRequest = out.OutRequest{
 				Source: out.Source{
 					URI:        bareGitRepo,
-					Branch:     "master",
+					Branch:     "another-branch",
 					Pool:       "lock-pool",
 					RetryDelay: 1 * time.Second,
 				},
@@ -272,7 +211,7 @@ var _ = Describe("Out", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			claimAllLocks := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
-				git clone %s .
+				git clone --branch another-branch %s .
 
 				git config user.email "ginkgo@localhost"
 				git config user.name "Ginkgo Local"
@@ -337,7 +276,7 @@ var _ = Describe("Out", func() {
 			outRequest = out.OutRequest{
 				Source: out.Source{
 					URI:    bareGitRepo,
-					Branch: "master",
+					Branch: "another-branch",
 					Pool:   "lock-pool",
 				},
 				Params: out.OutParams{
@@ -362,7 +301,7 @@ var _ = Describe("Out", func() {
 				{
 					"source": {
 						"uri": "%s",
-						"branch": "master",
+						"branch": "another-branch",
 						"pool": "lock-pool"
 					},
 					"version": {
@@ -375,7 +314,7 @@ var _ = Describe("Out", func() {
 			outReleaseRequest = out.OutRequest{
 				Source: out.Source{
 					URI:    bareGitRepo,
-					Branch: "master",
+					Branch: "another-branch",
 					Pool:   "lock-pool",
 				},
 				Params: out.OutParams{
@@ -396,7 +335,7 @@ var _ = Describe("Out", func() {
 		})
 
 		It("moves the lock to unclaimed", func() {
-			version := getVersion(bareGitRepo, "HEAD")
+			version := getVersion(bareGitRepo, "origin/another-branch")
 
 			claimedFiles, err := ioutil.ReadDir(filepath.Join(gitRepo, "lock-pool", "claimed"))
 			Ω(err).ShouldNot(HaveOccurred())
@@ -448,7 +387,7 @@ var _ = Describe("Out", func() {
 			outRequest = out.OutRequest{
 				Source: out.Source{
 					URI:        bareGitRepo,
-					Branch:     "master",
+					Branch:     "another-branch",
 					Pool:       "lock-pool",
 					RetryDelay: 100 * time.Millisecond,
 				},
@@ -473,7 +412,7 @@ var _ = Describe("Out", func() {
 		})
 
 		It("adds the new lock", func() {
-			clone := exec.Command("git", "clone", bareGitRepo, ".")
+			clone := exec.Command("git", "clone", "--branch", "another-branch", bareGitRepo, ".")
 			clone.Dir = cloneDir
 			err := clone.Run()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -516,7 +455,7 @@ var _ = Describe("Out", func() {
 			outRequest = out.OutRequest{
 				Source: out.Source{
 					URI:        gitURI,
-					Branch:     "master",
+					Branch:     "another-branch",
 					Pool:       "lock-pool",
 					RetryDelay: 1 * time.Second,
 				},
@@ -613,7 +552,7 @@ var _ = Describe("Out", func() {
 			BeforeEach(func() {
 				var err error
 				claimOneLock := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
-				git clone %s .
+				git clone --branch another-branch %s .
 
 				git config user.email "ginkgo@localhost"
 				git config user.name "Ginkgo Local"

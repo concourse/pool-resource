@@ -77,7 +77,6 @@ var _ = Describe("Lock Pool", func() {
 			})
 
 			Context("when setup succeeds", func() {
-
 				It("tries to unclaim the lock it found in the name file", func() {
 					_, _, err := lockPool.ReleaseLock(lockDir)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -133,6 +132,7 @@ var _ = Describe("Lock Pool", func() {
 
 								Ω(output).Should(gbytes.Say("err"))
 
+								Ω(fakeLockHandler.ResetLockCallCount()).Should(Equal(2))
 								Ω(fakeLockHandler.UnclaimLockCallCount()).Should(Equal(2))
 								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
 							})

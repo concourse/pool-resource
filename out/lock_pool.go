@@ -111,10 +111,14 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 
 	var ref string
 	for {
-		ref, err = lp.LockHandler.UnclaimLock(lockName)
-
+		err = lp.LockHandler.ResetLock()
 		if err != nil {
-			fmt.Fprintf(lp.Output, "\nfailed to unclaim the lock: %s! (err: %s) retrying...\n", lockName, err)
+			return "", Version{}, err
+		}
+
+		ref, err = lp.LockHandler.UnclaimLock(lockName)
+		if err != nil {
+			fmt.Fprintf(lp.Output, "\nfailed to unclaim the lock: %s! (err: %s)\n", lockName, err)
 			return "", Version{}, err
 		}
 
