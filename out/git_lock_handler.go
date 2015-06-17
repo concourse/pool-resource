@@ -37,7 +37,7 @@ func (glh *GitLockHandler) UnclaimLock(lockName string) (string, error) {
 		return "", err
 	}
 
-	_, err = glh.git("commit", "-am", fmt.Sprintf("unclaiming: %s", lockName))
+	_, err = glh.git("commit", "-m", fmt.Sprintf("unclaiming: %s", lockName))
 	if err != nil {
 		return "", err
 	}
@@ -146,7 +146,7 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 	}
 
 	commitMessage := fmt.Sprintf("claiming: %s", name)
-	_, err = glh.git("commit", "-am", commitMessage)
+	_, err = glh.git("commit", "-m", commitMessage)
 	if err != nil {
 		return "", "", err
 	}
