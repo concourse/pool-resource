@@ -1,7 +1,6 @@
 package out
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 var ErrNoLocksAvailable = errors.New("No locks to claim")
@@ -18,8 +16,11 @@ var ErrNoLocksAvailable = errors.New("No locks to claim")
 type GitLockHandler struct {
 	Source Source
 
-	dir string
+	dir         string
+	startingRef string
 }
+
+const falsePushString = "Everything up-to-date"
 
 func NewGitLockHandler(source Source) *GitLockHandler {
 	return &GitLockHandler{
@@ -55,6 +56,14 @@ func (glh *GitLockHandler) ResetLock() error {
 	if err != nil {
 		return err
 	}
+
+	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return err
+	}
+
+	glh.startingRef = strings.TrimSpace(string(ref))
+
 	return nil
 }
 
@@ -128,7 +137,6 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 		return "", "", ErrNoLocksAvailable
 	}
 
-	rand.Seed(time.Now().Unix())
 	index := rand.Int() % len(files)
 	name := filepath.Base(files[index].Name())
 
@@ -137,7 +145,8 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 		return "", "", err
 	}
 
-	_, err = glh.git("commit", "-am", fmt.Sprintf("claiming: %s", name))
+	commitMessage := fmt.Sprintf("claiming: %s", name)
+	_, err = glh.git("commit", "-am", commitMessage)
 	if err != nil {
 		return "", "", err
 	}
@@ -148,22 +157,21 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 }
 
 func (glh *GitLockHandler) BroadcastLockPool() error {
-	_, err := glh.git("push", "origin", "HEAD:"+glh.Source.Branch)
+	contents, err := glh.git("push", "origin", "HEAD:"+glh.Source.Branch)
+
+	// if we push and everything is up to date then someone else has made
+	// a commit in the same second acquiring the same lock
+	//
+	// we need to stop and try again
+	if strings.Contains(string(contents), falsePushString) {
+		return errors.New("everything should not be up to date")
+	}
+
 	return err
 }
 
 func (glh *GitLockHandler) git(args ...string) ([]byte, error) {
 	arguments := append([]string{"-C", glh.dir}, args...)
 	cmd := exec.Command("git", arguments...)
-
-	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-
-	defer func() {
-		if !cmd.ProcessState.Success() {
-			fmt.Fprintln(os.Stderr, stderr.String())
-		}
-	}()
-
-	return cmd.Output()
+	return cmd.CombinedOutput()
 }

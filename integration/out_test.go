@@ -7,10 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 
 	"github.com/concourse/pool-resource/out"
@@ -482,6 +484,135 @@ var _ = Describe("Out", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(string(contents)).Should(Equal("hello"))
+		})
+	})
+
+	Context("when acquiring locks in 2 places within the same second", func() {
+		var sessionOne *gexec.Session
+		var sessionTwo *gexec.Session
+		var sessionOneDir string
+		var sessionTwoDir string
+		var claimLockDir string
+
+		var gitServerSession *gexec.Session
+
+		BeforeEach(func() {
+			var err error
+			sessionOneDir, err = ioutil.TempDir("", "session-one")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			sessionTwoDir, err = ioutil.TempDir("", "session-two")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			outRequest = out.OutRequest{
+				Source: out.Source{
+					URI:        "git://localhost/",
+					Branch:     "master",
+					Pool:       "lock-pool",
+					RetryDelay: 1 * time.Second,
+				},
+				Params: out.OutParams{
+					Acquire: true,
+				},
+			}
+
+			gitServerCommand := exec.Command("git", "daemon",
+				"--verbose", "--export-all",
+				"--strict-paths", "--reuseaddr",
+				"--base-path="+bareGitRepo,
+				"--enable=receive-pack",
+				"--max-connections=1",
+				bareGitRepo+"/",
+			)
+
+			gitServerSession, err = gexec.Start(gitServerCommand, GinkgoWriter, GinkgoWriter)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(gitServerSession.Err).Should(gbytes.Say("Ready to rumble"))
+
+			claimLockDir, err = ioutil.TempDir("", "claiming-locks")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			claimOneLock := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
+				git clone %s .
+
+				git config user.email "ginkgo@localhost"
+				git config user.name "Ginkgo Local"
+
+				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/
+				git commit -am "claiming a lock"
+				git push
+			`, bareGitRepo))
+
+			claimOneLock.Stdout = GinkgoWriter
+			claimOneLock.Stderr = GinkgoWriter
+			claimOneLock.Dir = claimLockDir
+
+			err = claimOneLock.Run()
+			Ω(err).ShouldNot(HaveOccurred())
+
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(claimLockDir)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = os.RemoveAll(sessionOneDir)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = os.RemoveAll(sessionTwoDir)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			gitServerSession.Terminate().Wait()
+		})
+
+		It("does not acquire the same lock", func() {
+			trigger := make(chan struct{})
+			oneReady := make(chan struct{})
+			twoReady := make(chan struct{})
+
+			var exitedCounter uint64 = 0
+
+			go func() {
+				defer GinkgoRecover()
+
+				<-trigger
+
+				sessionOne = runOut(outRequest, sessionOneDir)
+				close(oneReady)
+
+				sessionOne.Wait(10 * time.Second)
+
+				atomic.AddUint64(&exitedCounter, 1)
+			}()
+
+			go func() {
+				defer GinkgoRecover()
+
+				<-trigger
+
+				sessionTwo = runOut(outRequest, sessionTwoDir)
+				close(twoReady)
+
+				sessionTwo.Wait(10 * time.Second)
+
+				atomic.AddUint64(&exitedCounter, 1)
+			}()
+
+			close(trigger)
+
+			<-oneReady
+			<-twoReady
+
+			Eventually(func() uint64 {
+				return exitedCounter
+			}, 5*time.Second).Should(Equal(uint64(1)))
+			Consistently(func() uint64 {
+				return exitedCounter
+			}, 2*time.Second).Should(Equal(uint64(1)))
+
+			sessionOne.Terminate().Wait()
+			sessionTwo.Terminate().Wait()
 		})
 	})
 })
