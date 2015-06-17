@@ -43,6 +43,9 @@ func (glh *GitLockHandler) UnclaimLock(lockName string) (string, error) {
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
 
 	return string(ref), nil
 }
@@ -81,6 +84,9 @@ func (glh *GitLockHandler) AddLock(lock string, contents []byte) (string, error)
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
 
 	return string(ref), nil
 }
@@ -146,6 +152,9 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return "", "", err
+	}
 
 	return name, string(ref), nil
 }
