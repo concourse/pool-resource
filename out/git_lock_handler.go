@@ -17,8 +17,7 @@ var ErrLockConflict = errors.New("pool state out of date")
 type GitLockHandler struct {
 	Source Source
 
-	dir         string
-	startingRef string
+	dir string
 }
 
 const falsePushString = "Everything up-to-date"
@@ -58,13 +57,6 @@ func (glh *GitLockHandler) ResetLock() error {
 	if err != nil {
 		return err
 	}
-
-	ref, err := glh.git("rev-parse", "HEAD")
-	if err != nil {
-		return err
-	}
-
-	glh.startingRef = strings.TrimSpace(string(ref))
 
 	return nil
 }
