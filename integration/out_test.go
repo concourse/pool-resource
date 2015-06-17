@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -487,14 +488,16 @@ var _ = Describe("Out", func() {
 		})
 	})
 
-	Context("when acquiring locks in 2 places within the same second", func() {
+	Context("when 2 processes are acquiring a lock at the same time", func() {
 		var sessionOne *gexec.Session
 		var sessionTwo *gexec.Session
+		var gitServerSession *gexec.Session
+
 		var sessionOneDir string
 		var sessionTwoDir string
 		var claimLockDir string
 
-		var gitServerSession *gexec.Session
+		var exitedCounter uint64
 
 		BeforeEach(func() {
 			var err error
@@ -504,9 +507,15 @@ var _ = Describe("Out", func() {
 			sessionTwoDir, err = ioutil.TempDir("", "session-two")
 			Ω(err).ShouldNot(HaveOccurred())
 
+			claimLockDir, err = ioutil.TempDir("", "claiming-locks")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			gitPort := GinkgoParallelNode() + 9418
+			gitURI := fmt.Sprintf("git://localhost:%d/", gitPort)
+
 			outRequest = out.OutRequest{
 				Source: out.Source{
-					URI:        "git://localhost/",
+					URI:        gitURI,
 					Branch:     "master",
 					Pool:       "lock-pool",
 					RetryDelay: 1 * time.Second,
@@ -522,6 +531,7 @@ var _ = Describe("Out", func() {
 				"--base-path="+bareGitRepo,
 				"--enable=receive-pack",
 				"--max-connections=1",
+				"--port="+strconv.Itoa(gitPort),
 				bareGitRepo+"/",
 			)
 
@@ -529,28 +539,6 @@ var _ = Describe("Out", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(gitServerSession.Err).Should(gbytes.Say("Ready to rumble"))
-
-			claimLockDir, err = ioutil.TempDir("", "claiming-locks")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			claimOneLock := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
-				git clone %s .
-
-				git config user.email "ginkgo@localhost"
-				git config user.name "Ginkgo Local"
-
-				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/
-				git commit -am "claiming a lock"
-				git push
-			`, bareGitRepo))
-
-			claimOneLock.Stdout = GinkgoWriter
-			claimOneLock.Stderr = GinkgoWriter
-			claimOneLock.Dir = claimLockDir
-
-			err = claimOneLock.Run()
-			Ω(err).ShouldNot(HaveOccurred())
-
 		})
 
 		AfterEach(func() {
@@ -566,12 +554,12 @@ var _ = Describe("Out", func() {
 			gitServerSession.Terminate().Wait()
 		})
 
-		It("does not acquire the same lock", func() {
+		JustBeforeEach(func() {
 			trigger := make(chan struct{})
 			oneReady := make(chan struct{})
 			twoReady := make(chan struct{})
 
-			var exitedCounter uint64 = 0
+			exitedCounter = 0
 
 			go func() {
 				defer GinkgoRecover()
@@ -603,16 +591,61 @@ var _ = Describe("Out", func() {
 
 			<-oneReady
 			<-twoReady
+		})
 
-			Eventually(func() uint64 {
-				return exitedCounter
-			}, 5*time.Second).Should(Equal(uint64(1)))
-			Consistently(func() uint64 {
-				return exitedCounter
-			}, 2*time.Second).Should(Equal(uint64(1)))
+		Context("when another lock is acquired in the same pool at the same time", func() {
 
-			sessionOne.Terminate().Wait()
-			sessionTwo.Terminate().Wait()
+			It("does not output an error message", func() {
+				Eventually(func() uint64 {
+					return exitedCounter
+				}, 5*time.Second).Should(Equal(uint64(2)))
+
+				sessionOne.Terminate().Wait()
+				sessionTwo.Terminate().Wait()
+
+				Ω(sessionOne.Err).ShouldNot(gbytes.Say("err"))
+				Ω(sessionTwo.Err).ShouldNot(gbytes.Say("err"))
+			})
+		})
+
+		Context("when acquiring locks in 2 places within the same second", func() {
+
+			BeforeEach(func() {
+				var err error
+				claimOneLock := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
+				git clone %s .
+
+				git config user.email "ginkgo@localhost"
+				git config user.name "Ginkgo Local"
+
+				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/
+				git commit -am "claiming a lock"
+				git push
+			`, bareGitRepo))
+
+				claimOneLock.Stdout = GinkgoWriter
+				claimOneLock.Stderr = GinkgoWriter
+				claimOneLock.Dir = claimLockDir
+
+				err = claimOneLock.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+			})
+
+			It("does not acquire the same lock", func() {
+				Eventually(func() uint64 {
+					return exitedCounter
+				}, 5*time.Second).Should(Equal(uint64(1)))
+				Consistently(func() uint64 {
+					return exitedCounter
+				}, 2*time.Second).Should(Equal(uint64(1)))
+
+				sessionOne.Terminate().Wait()
+				sessionTwo.Terminate().Wait()
+
+				Ω(sessionOne.Err).ShouldNot(gbytes.Say("err"))
+				Ω(sessionTwo.Err).ShouldNot(gbytes.Say("err"))
+			})
 		})
 	})
 })

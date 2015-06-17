@@ -67,14 +67,21 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 		}
 
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to acquire lock on pool: %s! (err: %s) retrying...\n", lp.Source.Pool, err)
+			fmt.Fprintf(lp.Output, "\nfailed to acquire lock on pool: %s! (err: %s) retrying...\n", lp.Source.Pool, err)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
 
 		err = lp.LockHandler.BroadcastLockPool()
+
+		if err == ErrLockConflict {
+			fmt.Fprint(lp.Output, ".")
+			time.Sleep(lp.Source.RetryDelay)
+			continue
+		}
+
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}

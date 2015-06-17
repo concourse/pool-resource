@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-var ErrNoLocksAvailable = errors.New("No locks to claim")
+var ErrNoLocksAvailable = errors.New("no locks to claim")
+var ErrLockConflict = errors.New("pool state out of date")
 
 type GitLockHandler struct {
 	Source Source
@@ -21,6 +22,7 @@ type GitLockHandler struct {
 }
 
 const falsePushString = "Everything up-to-date"
+const pushRejectedString = "[rejected]"
 
 func NewGitLockHandler(source Source) *GitLockHandler {
 	return &GitLockHandler{
@@ -164,7 +166,11 @@ func (glh *GitLockHandler) BroadcastLockPool() error {
 	//
 	// we need to stop and try again
 	if strings.Contains(string(contents), falsePushString) {
-		return errors.New("everything should not be up to date")
+		return ErrLockConflict
+	}
+
+	if strings.Contains(string(contents), pushRejectedString) {
+		return ErrLockConflict
 	}
 
 	return err
