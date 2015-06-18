@@ -174,6 +174,8 @@ func (glh *GitLockHandler) BroadcastLockPool() error {
 		return ErrLockConflict
 	}
 
+	fmt.Fprintln(os.Stderr, "GIT CONTENTS: ", string(contents))
+
 	return err
 }
 
