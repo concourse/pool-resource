@@ -22,6 +22,7 @@ type GitLockHandler struct {
 
 const falsePushString = "Everything up-to-date"
 const pushRejectedString = "[rejected]"
+const pushRemoteRejectedString = "[remote rejected]"
 
 func NewGitLockHandler(source Source) *GitLockHandler {
 	return &GitLockHandler{
@@ -174,7 +175,9 @@ func (glh *GitLockHandler) BroadcastLockPool() error {
 		return ErrLockConflict
 	}
 
-	fmt.Fprintln(os.Stderr, "GIT CONTENTS: ", string(contents))
+	if strings.Contains(string(contents), pushRemoteRejectedString) {
+		return ErrLockConflict
+	}
 
 	return err
 }
