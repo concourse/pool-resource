@@ -11,4 +11,4 @@ payload=$(mktemp $TMPDIR/pool-resource-request.XXXXXX)
 cat > $payload <&0
 load_pubkey $payload
 
-exec /opt/go/out $1 >&3 < $payload
+/opt/go/out $1 >&3 < $payload
