@@ -36,7 +36,7 @@ same as the git-resource.
 
 This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
 `vsphere`. The `.gitkeep` files are required to keep the `unclaimed` and
-`claimed` directories track-able by Git if there is no files in them.
+`claimed` directories track-able by Git if there are no files in them.
 
 
 ## Source Configuration
@@ -116,6 +116,12 @@ resources:
     uri: git@github.com:concourse/locks.git
     branch: master
     pool: aws
+    private_key: |
+      -----BEGIN RSA PRIVATE KEY-----
+      MIIEowIBAAKCAQEAtCS10/f7W7lkQaSgD/mVeaSOvSF9ql4hf/zfMwfVGgHWjj+W
+      <Lots more text>
+      DWiJL+OFeg9kawcUL6hQ8JeXPhlImG6RTUffma9+iGQyyBMCGd1l
+      -----END RSA PRIVATE KEY-----
 
 jobs:
 - name: deploy-aws
