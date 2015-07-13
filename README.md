@@ -36,7 +36,7 @@ same as the git-resource.
 
 This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
 `vsphere`. The `.gitkeep` files are required to keep the `unclaimed` and
-`claimed` directories track-able by Git if there is no files in them.
+`claimed` directories track-able by Git if there are no files in them.
 
 
 ## Source Configuration
@@ -106,7 +106,7 @@ One of the following is required.
 ## Example Concourse Configuration
 
 The following example pipeline models acquiring, passing through, and releasing
-a lock based on the example git repository structure:
+a lock based on the example git repository structure (this sample does not include a `private_key` key-value pair in the `source` configuration; however, when you create your pipeline, you will want to include one to avoid an `error acquiring lock: exit status 128` pipeline failure):
 
 ```
 resources:
