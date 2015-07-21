@@ -153,7 +153,7 @@ var _ = Describe("In", func() {
 
 				session := runIn(jsonIn, inDestination, 1)
 
-				Ω(session.Err).Should(gbytes.Say("cannot use lock that has been unclaimed in the meantime"))
+				Ω(session.Err).Should(gbytes.Say("error: lock instance is no longer acquired"))
 			})
 
 			Context("when the lock is acquired again but by another pipeline run and is run", func() {
@@ -183,7 +183,7 @@ var _ = Describe("In", func() {
 
 					session := runIn(jsonIn, inDestination, 1)
 
-					Ω(session.Err).Should(gbytes.Say("cannot use lock that has been unclaimed in the meantime"))
+					Ω(session.Err).Should(gbytes.Say("error: lock instance is no longer acquired"))
 				})
 			})
 		})
