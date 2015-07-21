@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -18,7 +19,6 @@ var _ = Describe("In", func() {
 	var inDestination string
 	var gitRepo string
 
-	var sha []byte
 	var output inResponse
 
 	BeforeEach(func() {
@@ -52,29 +52,28 @@ var _ = Describe("In", func() {
 		})
 	})
 
-	Context("When a previous version is given", func() {
+	Context("when a previous version is given", func() {
 		BeforeEach(func() {
 			var err error
 
 			setupGitRepo(gitRepo)
 
 			claimLock := exec.Command("bash", "-e", "-c", `
-				git mv  lock-pool/unclaimed/some-lock  lock-pool/claimed/some-lock
-				git add .
+				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
 				git commit -m 'claiming some-lock'
 			`)
-
 			claimLock.Dir = gitRepo
 
 			err = claimLock.Run()
 			Ω(err).ShouldNot(HaveOccurred())
+		})
 
+		It("outputs the metadata for the environment", func() {
 			gitVersion := exec.Command("git", "rev-parse", "HEAD")
-
 			gitVersion.Dir = gitRepo
-
-			sha, err = gitVersion.Output()
+			sha, err := gitVersion.Output()
 			Ω(err).ShouldNot(HaveOccurred())
+
 			jsonIn := fmt.Sprintf(`
 				{
 					"source": {
@@ -91,9 +90,7 @@ var _ = Describe("In", func() {
 
 			err = json.Unmarshal(session.Out.Contents(), &output)
 			Ω(err).ShouldNot(HaveOccurred())
-		})
 
-		It("outputs the metadata for the environment", func() {
 			metaDataFile := filepath.Join(inDestination, "metadata")
 			Ω(metaDataFile).Should(BeARegularFile())
 
@@ -119,6 +116,76 @@ var _ = Describe("In", func() {
 					{Name: "pool_name", Value: "lock-pool"},
 				},
 			}))
+		})
+
+		Context("when the lock from the previous version has been released and we are trying to run it again", func() {
+			var sha []byte
+
+			BeforeEach(func() {
+				var err error
+				gitVersion := exec.Command("git", "rev-parse", "HEAD")
+				gitVersion.Dir = gitRepo
+				sha, err = gitVersion.Output()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				unclaimLock := exec.Command("bash", "-e", "-c", `
+					git mv lock-pool/claimed/some-lock lock-pool/unclaimed/some-lock
+					git commit -m 'unclaiming some-lock'
+				`)
+				unclaimLock.Dir = gitRepo
+
+				err = unclaimLock.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("fails with a useful error message because the lock is no longer safe to use", func() {
+				jsonIn := fmt.Sprintf(`
+					{
+						"source": {
+							"uri": "%s",
+							"branch": "master",
+							"pool": "lock-pool"
+						},
+						"version": {
+							"ref": "%s"
+						}
+					}`, gitRepo, string(sha))
+
+				session := runIn(jsonIn, inDestination, 1)
+
+				Ω(session.Err).Should(gbytes.Say("cannot use lock that has been unclaimed in the meantime"))
+			})
+
+			Context("when the lock is acquired again but by another pipeline run and is run", func() {
+				BeforeEach(func() {
+					claimLock := exec.Command("bash", "-e", "-c", `
+						git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
+						git commit -m 'claiming some-lock'
+					`)
+					claimLock.Dir = gitRepo
+
+					err := claimLock.Run()
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("fails with a useful error message because the lock has been acquired by another pipeline run", func() {
+					jsonIn := fmt.Sprintf(`
+					{
+						"source": {
+							"uri": "%s",
+							"branch": "master",
+							"pool": "lock-pool"
+						},
+						"version": {
+							"ref": "%s"
+						}
+					}`, gitRepo, string(sha))
+
+					session := runIn(jsonIn, inDestination, 1)
+
+					Ω(session.Err).Should(gbytes.Say("cannot use lock that has been unclaimed in the meantime"))
+				})
+			})
 		})
 	})
 })

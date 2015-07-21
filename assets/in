@@ -14,6 +14,17 @@ if [ -z "$destination" ]; then
   exit 1
 fi
 
+check_if_file_changed_in_range() {
+  local filepath=$1
+  local start=$2
+  local end=$3
+
+  if [[ -n $(git log --oneline $start..$end -- "$filepath") ]]; then
+    echo "cannot use lock that has been unclaimed in the meantime"
+    exit 1
+  fi
+}
+
 # for jq
 PATH=/usr/local/bin:$PATH
 
@@ -60,6 +71,8 @@ git clean --force --force -d
 
 changed_filepath=$(git diff --name-only HEAD~1 | head -1)
 changed_filename=$(basename $changed_filepath)
+
+check_if_file_changed_in_range $changed_filepath $ref $branch
 
 jq -n "{
   version: {ref: $(git rev-parse HEAD | jq -R .)},
