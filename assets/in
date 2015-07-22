@@ -19,7 +19,7 @@ check_if_file_changed_in_range() {
   local start=$2
   local end=$3
 
-  if [[ -n $(git log --oneline $start..$end -- "$filepath") ]]; then
+  if [ -n "$(git log --oneline $start..$end -- "$filepath")" ]; then
     echo "error: lock instance is no longer acquired"
     exit 1
   fi
