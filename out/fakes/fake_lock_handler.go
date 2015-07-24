@@ -11,7 +11,7 @@ type FakeLockHandler struct {
 	GrabAvailableLockStub        func() (lock string, version string, err error)
 	grabAvailableLockMutex       sync.RWMutex
 	grabAvailableLockArgsForCall []struct{}
-	grabAvailableLockReturns struct {
+	grabAvailableLockReturns     struct {
 		result1 string
 		result2 string
 		result3 error
@@ -35,22 +35,31 @@ type FakeLockHandler struct {
 		result1 string
 		result2 error
 	}
+	RemoveLockStub        func(lock string) (version string, err error)
+	removeLockMutex       sync.RWMutex
+	removeLockArgsForCall []struct {
+		lock string
+	}
+	removeLockReturns struct {
+		result1 string
+		result2 error
+	}
 	SetupStub        func() error
 	setupMutex       sync.RWMutex
 	setupArgsForCall []struct{}
-	setupReturns struct {
+	setupReturns     struct {
 		result1 error
 	}
 	BroadcastLockPoolStub        func() error
 	broadcastLockPoolMutex       sync.RWMutex
 	broadcastLockPoolArgsForCall []struct{}
-	broadcastLockPoolReturns struct {
+	broadcastLockPoolReturns     struct {
 		result1 error
 	}
 	ResetLockStub        func() error
 	resetLockMutex       sync.RWMutex
 	resetLockArgsForCall []struct{}
-	resetLockReturns struct {
+	resetLockReturns     struct {
 		result1 error
 	}
 }
@@ -143,6 +152,39 @@ func (fake *FakeLockHandler) AddLockArgsForCall(i int) (string, []byte) {
 func (fake *FakeLockHandler) AddLockReturns(result1 string, result2 error) {
 	fake.AddLockStub = nil
 	fake.addLockReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeLockHandler) RemoveLock(lock string) (version string, err error) {
+	fake.removeLockMutex.Lock()
+	fake.removeLockArgsForCall = append(fake.removeLockArgsForCall, struct {
+		lock string
+	}{lock})
+	fake.removeLockMutex.Unlock()
+	if fake.RemoveLockStub != nil {
+		return fake.RemoveLockStub(lock)
+	} else {
+		return fake.removeLockReturns.result1, fake.removeLockReturns.result2
+	}
+}
+
+func (fake *FakeLockHandler) RemoveLockCallCount() int {
+	fake.removeLockMutex.RLock()
+	defer fake.removeLockMutex.RUnlock()
+	return len(fake.removeLockArgsForCall)
+}
+
+func (fake *FakeLockHandler) RemoveLockArgsForCall(i int) string {
+	fake.removeLockMutex.RLock()
+	defer fake.removeLockMutex.RUnlock()
+	return fake.removeLockArgsForCall[i].lock
+}
+
+func (fake *FakeLockHandler) RemoveLockReturns(result1 string, result2 error) {
+	fake.RemoveLockStub = nil
+	fake.removeLockReturns = struct {
 		result1 string
 		result2 error
 	}{result1, result2}

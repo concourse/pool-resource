@@ -134,7 +134,7 @@ func itWorksWithBranch(branchName string) {
 				It("complains about it", func() {
 					errorMessages := string(session.Err.Contents())
 
-					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, or add)"))
+					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, or add)"))
 				})
 			})
 		})
@@ -275,6 +275,113 @@ func itWorksWithBranch(branchName string) {
 			})
 		})
 
+		Context("When removing a lock", func() {
+			var myLocksGetDir string
+			var outReleaseRequest out.OutRequest
+			var outReleaseResponse out.OutResponse
+
+			BeforeEach(func() {
+				outRequest = out.OutRequest{
+					Source: out.Source{
+						URI:    bareGitRepo,
+						Branch: branchName,
+						Pool:   "lock-pool",
+					},
+					Params: out.OutParams{
+						Acquire: true,
+					},
+				}
+
+				session := runOut(outRequest, sourceDir)
+				Eventually(session).Should(gexec.Exit(0))
+
+				err := json.Unmarshal(session.Out.Contents(), &outResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			JustBeforeEach(func() {
+				var err error
+
+				myLocksGetDir, err = ioutil.TempDir("", "my-locks")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				jsonIn := fmt.Sprintf(`
+				{
+					"source": {
+						"uri": "%s",
+						"branch": "%s",
+						"pool": "lock-pool"
+					},
+					"version": {
+						"ref": "%s"
+					}
+				}`, bareGitRepo, branchName, string(outResponse.Version.Ref))
+
+				runIn(jsonIn, filepath.Join(myLocksGetDir, "lock-step-name"), 0)
+
+				outReleaseRequest = out.OutRequest{
+					Source: out.Source{
+						URI:    bareGitRepo,
+						Branch: branchName,
+						Pool:   "lock-pool",
+					},
+					Params: out.OutParams{
+						Remove: "lock-step-name",
+					},
+				}
+
+				session := runOut(outReleaseRequest, myLocksGetDir)
+				Eventually(session).Should(gexec.Exit(0))
+
+				err = json.Unmarshal(session.Out.Contents(), &outReleaseResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := os.RemoveAll(myLocksGetDir)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("removes the lock from the pool", func() {
+				version := getVersion(bareGitRepo, "origin/"+branchName)
+
+				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer os.RemoveAll(reCloneRepo)
+
+				reClone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
+				reClone.Dir = reCloneRepo
+				err = reClone.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(len(claimedFiles)).Should(Equal(1))
+
+				unclaimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "unclaimed"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(len(unclaimedFiles)).Should(Equal(2))
+
+				var removedLockName string
+				for _, metaDataPair := range outResponse.Metadata {
+					if metaDataPair.Name == "lock_name" {
+						removedLockName = metaDataPair.Value
+					}
+				}
+
+				Ω(outReleaseResponse).Should(Equal(out.OutResponse{
+					Version: version,
+					Metadata: []out.MetadataPair{
+						{Name: "lock_name", Value: removedLockName},
+						{Name: "pool_name", Value: "lock-pool"},
+					},
+				}))
+			})
+		})
+
 		Context("When releasing a lock", func() {
 			var myLocksGetDir string
 			var outReleaseRequest out.OutRequest
@@ -345,12 +452,22 @@ func itWorksWithBranch(branchName string) {
 			It("moves the lock to unclaimed", func() {
 				version := getVersion(bareGitRepo, "origin/"+branchName)
 
-				claimedFiles, err := ioutil.ReadDir(filepath.Join(gitRepo, "lock-pool", "claimed"))
+				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer os.RemoveAll(reCloneRepo)
+
+				reClone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
+				reClone.Dir = reCloneRepo
+				err = reClone.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(len(claimedFiles)).Should(Equal(1))
 
-				unclaimedFiles, err := ioutil.ReadDir(filepath.Join(gitRepo, "lock-pool", "unclaimed"))
+				unclaimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "unclaimed"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(len(unclaimedFiles)).Should(Equal(3))

@@ -33,6 +33,7 @@ type LockHandler interface {
 	GrabAvailableLock() (lock string, version string, err error)
 	UnclaimLock(lock string) (version string, err error)
 	AddLock(lock string, contents []byte) (version string, err error)
+	RemoveLock(lock string) (version string, err error)
 
 	Setup() error
 	BroadcastLockPool() error
@@ -192,6 +193,57 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 			continue
 		}
 
+		break
+	}
+
+	return lockName, Version{
+		Ref: strings.TrimSpace(ref),
+	}, nil
+}
+
+func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
+	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	if err != nil {
+		return "", Version{}, err
+	}
+
+	lockName := strings.TrimSpace(string(nameFileContents))
+
+	fmt.Fprintf(lp.Output, "removing lock: %s on pool: %s\n", lockName, lp.Source.Pool)
+
+	err = lp.LockHandler.Setup()
+	if err != nil {
+		return "", Version{}, err
+	}
+
+	var ref string
+
+	for {
+		err = lp.LockHandler.ResetLock()
+		if err != nil {
+			fmt.Fprintf(lp.Output, "failed to reset the lock: %s! (err: %s)\n", lockName, err)
+			return "", Version{}, err
+		}
+
+		ref, err = lp.LockHandler.RemoveLock(lockName)
+		if err != nil {
+			fmt.Fprintf(lp.Output, "failed to remove the lock: %s! (err: %s)\n", lockName, err)
+			return "", Version{}, err
+		}
+
+		err = lp.LockHandler.BroadcastLockPool()
+
+		if err == ErrLockConflict {
+			fmt.Fprintf(lp.Output, ".")
+			time.Sleep(lp.Source.RetryDelay)
+			continue
+		}
+
+		if err != nil {
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			time.Sleep(lp.Source.RetryDelay)
+			continue
+		}
 		break
 	}
 

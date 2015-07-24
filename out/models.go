@@ -18,6 +18,7 @@ type OutParams struct {
 	Release string `json:"release"`
 	Acquire bool   `json:"acquire"`
 	Add     string `json:"add"`
+	Remove  string `json:"remove"`
 }
 
 type OutRequest struct {

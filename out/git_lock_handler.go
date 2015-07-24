@@ -30,6 +30,27 @@ func NewGitLockHandler(source Source) *GitLockHandler {
 	}
 }
 
+func (glh *GitLockHandler) RemoveLock(lockName string) (string, error) {
+	pool := filepath.Join(glh.dir, glh.Source.Pool)
+
+	_, err := glh.git("rm", filepath.Join(pool, "claimed", lockName))
+	if err != nil {
+		return "", err
+	}
+
+	_, err = glh.git("commit", "-m", fmt.Sprintf("removing: %s", lockName))
+	if err != nil {
+		return "", err
+	}
+
+	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	return string(ref), nil
+}
+
 func (glh *GitLockHandler) UnclaimLock(lockName string) (string, error) {
 	pool := filepath.Join(glh.dir, glh.Source.Pool)
 
