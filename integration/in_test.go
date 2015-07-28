@@ -52,6 +52,59 @@ var _ = Describe("In", func() {
 		})
 	})
 
+	Context("when given version removed a lock", func() {
+		BeforeEach(func() {
+			var err error
+
+			setupGitRepo(gitRepo)
+
+			claimLock := exec.Command("bash", "-e", "-c", `
+				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
+				git commit -m 'claiming some-lock'
+
+				git rm lock-pool/claimed/some-lock
+				git commit -m 'removing some-lock'
+			`)
+			claimLock.Dir = gitRepo
+
+			err = claimLock.Run()
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("return succesfully", func() {
+			gitVersion := exec.Command("git", "rev-parse", "HEAD")
+			gitVersion.Dir = gitRepo
+			sha, err := gitVersion.Output()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			jsonIn := fmt.Sprintf(`
+				{
+					"source": {
+						"uri": "%s",
+						"branch": "master",
+						"pool": "lock-pool"
+					},
+					"version": {
+						"ref": "%s"
+					}
+				}`, gitRepo, string(sha))
+
+			session := runIn(jsonIn, inDestination, 0)
+
+			err = json.Unmarshal(session.Out.Contents(), &output)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(output).Should(Equal(inResponse{
+				Version: version{
+					Ref: string(strings.TrimSpace(string(sha))),
+				},
+				Metadata: []metadataPair{
+					{Name: "lock_name", Value: "some-lock"},
+					{Name: "pool_name", Value: "lock-pool"},
+				},
+			}))
+		})
+	})
+
 	Context("when a previous version is given", func() {
 		BeforeEach(func() {
 			var err error

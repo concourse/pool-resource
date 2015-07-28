@@ -85,6 +85,11 @@ jq -n "{
   }]
 }" >&3
 
+if [ ! -r $changed_filepath ]; then
+	echo "lock does not exist";
+	exit 0
+fi
+
 mkdir -p $1
 
 cat $pool_name/*/${changed_filename} > ${1}/metadata
