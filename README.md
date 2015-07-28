@@ -64,14 +64,14 @@ This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
 
 ## Behavior
 
-### `check`: Check for new commits.
+### `check`: Check for changes to the pool.
 
 The repository is cloned (or pulled if already present), and any commits made
 after the given version for the specified pool are returned. If no version is
 given, the ref for `HEAD` is returned.
 
 
-### `in`: Clone the repository, at the given ref.
+### `in`: Fetch an acquired lock.
 
 Outputs 2 files:
 
@@ -81,26 +81,32 @@ Outputs 2 files:
 * `name`: Contains the name of lock that was acquired.
 
 
-### `out`: Push to a repository.
+### `out`: Acquire, release, add, or remove a lock.
 
-Either claims or releases a lock and pushes to the repository.
+Performs one of the following actions to change the state of the pool.
 
 #### Parameters
 
 One of the following is required.
 
-* `acquire`: If true, we will attempt to move a file from your unclaimed lock
-  pool to claimed. We will try to acquire a lock until one is made available.
+* `acquire`: If true, we will attempt to move a randomly chosen lock from the
+  pool's unclaimed directory to the claimed directory. Acquiring will retry
+  until a lock becomes available.
 
 * `release`: If set, we will release the lock by moving it from claimed to
-  unclaimed. The value is the name of the get task that had the lock passed
-  from the previous job. This means that you need to *get* the pool-resource
-  first **before** releasing a lock.
+  unclaimed. The value is the path of the lock to release (a directory
+  containing `name` and `metadata`), which typically is just the step that
+  provided the lock (either a `get` to pass one along or a `put` to acquire).
 
 * `add`: If set, we will add a new lock to the pool in the unclaimed state. The
   value is the path to a directory containing the files `name` and `metadata`
   which should contain the name of your new lock and the contents you would like
   in the lock, respectively.
+
+* `remove`: If set, we will remove the given lock from the pool. The value is
+  the same as `release`. This can be used for e.g. tearing down an environment,
+  or moving a lock between pools by using `add` with a different pool in a
+  second step.
 
 
 ## Example Concourse Configuration
