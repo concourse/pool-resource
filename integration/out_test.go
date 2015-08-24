@@ -661,7 +661,7 @@ func itWorksWithBranch(branchName string) {
 
 				It("does not output an error message", func() {
 					Eventually(func() uint64 {
-						return exitedCounter
+						return atomic.LoadUint64(&exitedCounter)
 					}, 5*time.Second).Should(Equal(uint64(2)))
 
 					sessionOne.Terminate().Wait()
@@ -698,10 +698,10 @@ func itWorksWithBranch(branchName string) {
 
 				It("does not acquire the same lock", func() {
 					Eventually(func() uint64 {
-						return exitedCounter
+						return atomic.LoadUint64(&exitedCounter)
 					}, 5*time.Second).Should(Equal(uint64(1)))
 					Consistently(func() uint64 {
-						return exitedCounter
+						return atomic.LoadUint64(&exitedCounter)
 					}, 2*time.Second).Should(Equal(uint64(1)))
 
 					sessionOne.Terminate().Wait()
