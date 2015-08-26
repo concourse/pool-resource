@@ -72,7 +72,10 @@ git clean --force --force -d
 changed_filepath=$(git diff --name-only HEAD~1 | head -1)
 changed_filename=$(basename $changed_filepath)
 
-check_if_file_changed_in_range $changed_filepath $ref $branch
+if [[ "$(git log -1 --oneline)" != *"unclaiming"* ]]
+then
+	check_if_file_changed_in_range $changed_filepath $ref $branch
+fi
 
 jq -n "{
   version: {ref: $(git rev-parse HEAD | jq -R .)},
@@ -85,7 +88,7 @@ jq -n "{
   }]
 }" >&3
 
-if [ ! -r $changed_filepath ]; then
+if [ ! -r $pool_name/*/${changed_filename} ]; then
 	echo "lock does not exist";
 	exit 0
 fi
