@@ -72,8 +72,7 @@ git clean --force --force -d
 changed_filepath=$(git diff --name-only HEAD~1 | head -1)
 changed_filename=$(basename $changed_filepath)
 
-if [[ "$(git log -1 --oneline)" != *"unclaiming"* ]]
-then
+if [ "$(git log --format=%s -n 1)" != "unclaiming: $changed_filename" ]; then
 	check_if_file_changed_in_range $changed_filepath $ref $branch
 fi
 

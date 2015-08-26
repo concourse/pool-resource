@@ -184,7 +184,7 @@ var _ = Describe("In", func() {
 
 					unclaimLock := exec.Command("bash", "-e", "-c", `
 						git mv lock-pool/claimed/some-lock lock-pool/unclaimed/some-lock
-						git commit -m 'unclaiming some-lock'
+						git commit -m 'unclaiming: some-lock'
 					`)
 					unclaimLock.Dir = gitRepo
 
@@ -242,14 +242,14 @@ var _ = Describe("In", func() {
 				})
 			})
 
-			Context("when the commit message contains the string unclaiming", func() {
+			Context("when the commit message contains the string unclaiming: [lock-name]", func() {
 				var sha []byte
 				BeforeEach(func() {
 					var err error
 
 					unclaimLock := exec.Command("bash", "-e", "-c", `
 						git mv lock-pool/claimed/some-lock lock-pool/unclaimed/some-lock
-						git commit -m 'unclaiming some-lock'
+						git commit -m 'unclaiming: some-lock'
 					`)
 					unclaimLock.Dir = gitRepo
 
