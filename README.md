@@ -133,8 +133,7 @@ jobs:
 - name: deploy-aws
   plan:
     - put: aws-environments
-      params:
-        acquire: true
+      params: {acquire: true}
     - task: deploy-aws
       file: my-scripts/deploy-aws.yml
 
@@ -145,6 +144,30 @@ jobs:
     - task: test-aws
       file: my-scripts/test-aws.yml
     - put: aws-environments
-      params:
-        release: aws-environments
+      params: {release: aws-environments}
+```
+
+
+### Managing multiple locks
+
+The parameter for `release` is the name of the step whose lock to release.
+Normally this is just the same as the name of the resource, but if you have
+custom names for `put` (for example if you need to acquire multiple instances
+of the same pool), you would put that name instead. For example:
+
+```
+- name: test-multi-aws
+  plan:
+    - put: environment-1
+      resource: aws-environments
+      params: {acquire: true}
+    - put: environment-2
+      resource: aws-environments
+      params: {acquire: true}
+    - task: test-multi-aws
+      file: my-scripts/test-multi-aws.yml
+    - put: aws-environments
+      params: {release: environment-1}
+    - put: aws-environments
+      params: {release: environment-2}
 ```
