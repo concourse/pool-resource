@@ -174,7 +174,7 @@ var _ = Describe("In", func() {
 		Context("when the lock from the previous version has been released and we are trying to run it again", func() {
 			var sha []byte
 
-			Context("when the commit message does not contain the string unclaiming", func() {
+			Context("when the given commit claimed the lock but the lock was unclaimed afterwards", func() {
 				BeforeEach(func() {
 					var err error
 					gitVersion := exec.Command("git", "rev-parse", "HEAD")
@@ -242,7 +242,7 @@ var _ = Describe("In", func() {
 				})
 			})
 
-			Context("when the commit message contains the string unclaiming: [lock-name]", func() {
+			Context("when the commit itself unclaimed the lock", func() {
 				var sha []byte
 				BeforeEach(func() {
 					var err error
@@ -316,10 +316,8 @@ var _ = Describe("In", func() {
 							{Name: "pool_name", Value: "lock-pool"},
 						},
 					}))
-
 				})
 			})
-
 		})
 	})
 })

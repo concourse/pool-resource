@@ -69,10 +69,11 @@ git checkout -q $ref
 git log -1 --oneline
 git clean --force --force -d
 
-changed_filepath=$(git diff --name-only HEAD~1 | head -1)
-changed_filename=$(basename $changed_filepath)
+changed_filepath="$(git diff --name-only HEAD~1 | head -1)"
+changed_filename="$(basename $changed_filepath)"
 
-if [ "$(git log --format=%s -n 1)" != "unclaiming: $changed_filename" ]; then
+if [ -e "${pool_name}/claimed/${changed_filename}" ]; then
+  # lock is claimed; ensure it hasn't been unclaimed + reclaimed since the sha
 	check_if_file_changed_in_range $changed_filepath $ref $branch
 fi
 
