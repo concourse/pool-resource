@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/onsi/gomega/gbytes"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/ghttp"
@@ -192,6 +194,69 @@ var _ = Describe("TestServer", func() {
 		})
 	})
 
+	Describe("When a handler fails", func() {
+		BeforeEach(func() {
+			s.UnhandledRequestStatusCode = http.StatusForbidden //just to be clear that 500s aren't coming from unhandled requests
+		})
+
+		Context("because the handler has panicked", func() {
+			BeforeEach(func() {
+				s.AppendHandlers(func(w http.ResponseWriter, req *http.Request) {
+					panic("bam")
+				})
+			})
+
+			It("should respond with a 500 and make a failing assertion", func() {
+				var resp *http.Response
+				var err error
+
+				failures := InterceptGomegaFailures(func() {
+					resp, err = http.Get(s.URL())
+				})
+
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusInternalServerError))
+				Ω(failures).Should(ConsistOf(ContainSubstring("Handler Panicked")))
+			})
+		})
+
+		Context("because an assertion has failed", func() {
+			BeforeEach(func() {
+				s.AppendHandlers(func(w http.ResponseWriter, req *http.Request) {
+					// Ω(true).Should(BeFalse()) <-- would be nice to do it this way, but the test just can't be written this way
+
+					By("We're cheating a bit here -- we're throwing a GINKGO_PANIC which simulates a failed assertion")
+					panic(GINKGO_PANIC)
+				})
+			})
+
+			It("should respond with a 500 and *not* make a failing assertion, instead relying on Ginkgo to have already been notified of the error", func() {
+				resp, err := http.Get(s.URL())
+
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusInternalServerError))
+			})
+		})
+	})
+
+	Describe("Logging to the Writer", func() {
+		var buf *gbytes.Buffer
+		BeforeEach(func() {
+			buf = gbytes.NewBuffer()
+			s.Writer = buf
+			s.AppendHandlers(func(w http.ResponseWriter, req *http.Request) {})
+			s.AppendHandlers(func(w http.ResponseWriter, req *http.Request) {})
+		})
+
+		It("should write to the buffer when a request comes in", func() {
+			http.Get(s.URL() + "/foo")
+			Ω(buf).Should(gbytes.Say("GHTTP Received Request: GET - /foo\n"))
+
+			http.Post(s.URL()+"/bar", "", nil)
+			Ω(buf).Should(gbytes.Say("GHTTP Received Request: POST - /bar\n"))
+		})
+	})
+
 	Describe("Request Handlers", func() {
 		Describe("VerifyRequest", func() {
 			BeforeEach(func() {
@@ -310,7 +375,7 @@ var _ = Describe("TestServer", func() {
 				failures := InterceptGomegaFailures(func() {
 					http.DefaultClient.Do(req)
 				})
-				Ω(failures).Should(HaveLen(1))
+				Ω(failures).Should(ContainElement(ContainSubstring("Authorization header must be specified")))
 			})
 		})
 
@@ -435,6 +500,139 @@ var _ = Describe("TestServer", func() {
 					http.Post(s.URL()+"/foo", "application/json", bytes.NewReader([]byte(`[1,3]`)))
 				})
 				Ω(failures).Should(HaveLen(1))
+			})
+		})
+
+		Describe("VerifyForm", func() {
+			var formValues url.Values
+
+			BeforeEach(func() {
+				formValues = make(url.Values)
+				formValues.Add("users", "user1")
+				formValues.Add("users", "user2")
+				formValues.Add("group", "users")
+			})
+
+			Context("when encoded in the URL", func() {
+				BeforeEach(func() {
+					s.AppendHandlers(CombineHandlers(
+						VerifyRequest("GET", "/foo"),
+						VerifyForm(url.Values{
+							"users": []string{"user1", "user2"},
+							"group": []string{"users"},
+						}),
+					))
+				})
+
+				It("should verify form values", func() {
+					resp, err = http.Get(s.URL() + "/foo?" + formValues.Encode())
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("should ignore extra values", func() {
+					formValues.Add("extra", "value")
+					resp, err = http.Get(s.URL() + "/foo?" + formValues.Encode())
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("fail on missing values", func() {
+					formValues.Del("group")
+					failures := InterceptGomegaFailures(func() {
+						resp, err = http.Get(s.URL() + "/foo?" + formValues.Encode())
+					})
+					Ω(failures).Should(HaveLen(1))
+				})
+
+				It("fail on incorrect values", func() {
+					formValues.Set("group", "wheel")
+					failures := InterceptGomegaFailures(func() {
+						resp, err = http.Get(s.URL() + "/foo?" + formValues.Encode())
+					})
+					Ω(failures).Should(HaveLen(1))
+				})
+			})
+
+			Context("when present in the body", func() {
+				BeforeEach(func() {
+					s.AppendHandlers(CombineHandlers(
+						VerifyRequest("POST", "/foo"),
+						VerifyForm(url.Values{
+							"users": []string{"user1", "user2"},
+							"group": []string{"users"},
+						}),
+					))
+				})
+
+				It("should verify form values", func() {
+					resp, err = http.PostForm(s.URL()+"/foo", formValues)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("should ignore extra values", func() {
+					formValues.Add("extra", "value")
+					resp, err = http.PostForm(s.URL()+"/foo", formValues)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("fail on missing values", func() {
+					formValues.Del("group")
+					failures := InterceptGomegaFailures(func() {
+						resp, err = http.PostForm(s.URL()+"/foo", formValues)
+					})
+					Ω(failures).Should(HaveLen(1))
+				})
+
+				It("fail on incorrect values", func() {
+					formValues.Set("group", "wheel")
+					failures := InterceptGomegaFailures(func() {
+						resp, err = http.PostForm(s.URL()+"/foo", formValues)
+					})
+					Ω(failures).Should(HaveLen(1))
+				})
+			})
+		})
+
+		Describe("VerifyFormKV", func() {
+			Context("when encoded in the URL", func() {
+				BeforeEach(func() {
+					s.AppendHandlers(CombineHandlers(
+						VerifyRequest("GET", "/foo"),
+						VerifyFormKV("users", "user1", "user2"),
+					))
+				})
+
+				It("verifies the form value", func() {
+					resp, err = http.Get(s.URL() + "/foo?users=user1&users=user2")
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("verifies the form value", func() {
+					failures := InterceptGomegaFailures(func() {
+						resp, err = http.Get(s.URL() + "/foo?users=user1")
+					})
+					Ω(failures).Should(HaveLen(1))
+				})
+			})
+
+			Context("when present in the body", func() {
+				BeforeEach(func() {
+					s.AppendHandlers(CombineHandlers(
+						VerifyRequest("POST", "/foo"),
+						VerifyFormKV("users", "user1", "user2"),
+					))
+				})
+
+				It("verifies the form value", func() {
+					resp, err = http.PostForm(s.URL()+"/foo", url.Values{"users": []string{"user1", "user2"}})
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("verifies the form value", func() {
+					failures := InterceptGomegaFailures(func() {
+						resp, err = http.PostForm(s.URL()+"/foo", url.Values{"users": []string{"user1"}})
+					})
+					Ω(failures).Should(HaveLen(1))
+				})
 			})
 		})
 
