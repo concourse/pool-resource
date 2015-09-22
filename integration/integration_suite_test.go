@@ -71,6 +71,14 @@ func runIn(inJson string, destination string, expectedExitCode int) *gexec.Sessi
 func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 	outCmd := exec.Command(outPath, sourceDir)
 
+	outCmd.Env = append(
+		os.Environ(),
+		"BUILD_ID=1234",
+		"BUILD_NAME=42",
+		"BUILD_JOB_NAME=job-name",
+		"BUILD_PIPELINE_NAME=pipeline-name",
+	)
+
 	stdin, err := outCmd.StdinPipe()
 	Ω(err).ShouldNot(HaveOccurred())
 

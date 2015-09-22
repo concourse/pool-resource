@@ -27,7 +27,6 @@ var _ = Describe("Out", func() {
 
 func itWorksWithBranch(branchName string) {
 	Context("when the branch name is "+branchName, func() {
-
 		var gitRepo string
 		var bareGitRepo string
 		var sourceDir string
@@ -139,7 +138,7 @@ func itWorksWithBranch(branchName string) {
 			})
 		})
 
-		Context("When acquiring a lock", func() {
+		Context("when acquiring a lock", func() {
 			BeforeEach(func() {
 				outRequest = out.OutRequest{
 					Source: out.Source{
@@ -193,6 +192,18 @@ func itWorksWithBranch(branchName string) {
 						{Name: "pool_name", Value: "lock-pool"},
 					},
 				}))
+			})
+
+			It("commits with a descriptive message", func() {
+				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 claiming: " + outResponse.Metadata[0].Value))
 			})
 		})
 
@@ -275,10 +286,10 @@ func itWorksWithBranch(branchName string) {
 			})
 		})
 
-		Context("When removing a lock", func() {
+		Context("when removing a lock", func() {
 			var myLocksGetDir string
-			var outReleaseRequest out.OutRequest
-			var outReleaseResponse out.OutResponse
+			var outRemoveRequest out.OutRequest
+			var outRemoveResponse out.OutResponse
 
 			BeforeEach(func() {
 				outRequest = out.OutRequest{
@@ -319,7 +330,7 @@ func itWorksWithBranch(branchName string) {
 
 				runIn(jsonIn, filepath.Join(myLocksGetDir, "lock-step-name"), 0)
 
-				outReleaseRequest = out.OutRequest{
+				outRemoveRequest = out.OutRequest{
 					Source: out.Source{
 						URI:    bareGitRepo,
 						Branch: branchName,
@@ -330,10 +341,10 @@ func itWorksWithBranch(branchName string) {
 					},
 				}
 
-				session := runOut(outReleaseRequest, myLocksGetDir)
+				session := runOut(outRemoveRequest, myLocksGetDir)
 				Eventually(session).Should(gexec.Exit(0))
 
-				err = json.Unmarshal(session.Out.Contents(), &outReleaseResponse)
+				err = json.Unmarshal(session.Out.Contents(), &outRemoveResponse)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -372,7 +383,7 @@ func itWorksWithBranch(branchName string) {
 					}
 				}
 
-				Ω(outReleaseResponse).Should(Equal(out.OutResponse{
+				Ω(outRemoveResponse).Should(Equal(out.OutResponse{
 					Version: version,
 					Metadata: []out.MetadataPair{
 						{Name: "lock_name", Value: removedLockName},
@@ -380,9 +391,21 @@ func itWorksWithBranch(branchName string) {
 					},
 				}))
 			})
+
+			It("commits with a descriptive message", func() {
+				log := exec.Command("git", "log", "--oneline", "-1", outRemoveResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 removing: " + outRemoveResponse.Metadata[0].Value))
+			})
 		})
 
-		Context("When releasing a lock", func() {
+		Context("when releasing a lock", func() {
 			var myLocksGetDir string
 			var outReleaseRequest out.OutRequest
 			var outReleaseResponse out.OutResponse
@@ -487,6 +510,18 @@ func itWorksWithBranch(branchName string) {
 					},
 				}))
 			})
+
+			It("commits with a descriptive message", func() {
+				log := exec.Command("git", "log", "--oneline", "-1", outReleaseResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 unclaiming: " + outReleaseResponse.Metadata[0].Value))
+			})
 		})
 
 		Context("when adding a lock to the pool", func() {
@@ -549,6 +584,18 @@ func itWorksWithBranch(branchName string) {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(string(contents)).Should(Equal("hello"))
+			})
+
+			It("commits with a descriptive message", func() {
+				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding: " + outResponse.Metadata[0].Value))
 			})
 		})
 
