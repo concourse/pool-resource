@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -e
+
+not_installed() {
+  ! command -v $1 > /dev/null 2>&1
+}
+
+cleanup() {
+  rm built-out
+}
+
+pool_resource_dir=$(realpath $(dirname $(dirname $0)))
+
+if not_installed ginkgo; then
+  echo "# ginkgo is not installed! run the following command:"
+  echo "    go install github.com/onsi/ginkgo/ginkgo"
+  exit 1
+fi
+
+if not_installed docker; then
+  echo "# docker is not installed! run the following commands:"
+  echo "    brew install docker"
+  echo "    brew cask install docker-machine"
+  echo "    docker-machine create dev --driver virtualbox"
+  echo '    eval $(docker-machine env dev)'
+  echo "    docker login"
+  exit 1
+fi
+
+cd $pool_resource_dir
+ginkgo -r -p
+
+go build -o built-out cmd/out/main.go
+trap cleanup EXIT
+docker build .
