@@ -76,6 +76,7 @@ var _ = Describe("In", func() {
 			gitVersion.Dir = gitRepo
 			sha, err := gitVersion.Output()
 			Ω(err).ShouldNot(HaveOccurred())
+			shaStr := strings.TrimSpace(string(sha))
 
 			jsonIn := fmt.Sprintf(`
 				{
@@ -87,7 +88,7 @@ var _ = Describe("In", func() {
 					"version": {
 						"ref": "%s"
 					}
-				}`, gitRepo, string(sha))
+				}`, gitRepo, shaStr)
 
 			session := runIn(jsonIn, inDestination, 0)
 
@@ -95,7 +96,7 @@ var _ = Describe("In", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(output).Should(Equal(inResponse{
 				Version: version{
-					Ref: string(strings.TrimSpace(string(sha))),
+					Ref: shaStr,
 				},
 				Metadata: []metadataPair{
 					{Name: "lock_name", Value: "some-lock"},
@@ -126,6 +127,7 @@ var _ = Describe("In", func() {
 			gitVersion.Dir = gitRepo
 			sha, err := gitVersion.Output()
 			Ω(err).ShouldNot(HaveOccurred())
+			shaStr := strings.TrimSpace(string(sha))
 
 			jsonIn := fmt.Sprintf(`
 				{
@@ -137,7 +139,7 @@ var _ = Describe("In", func() {
 					"version": {
 						"ref": "%s"
 					}
-				}`, gitRepo, string(sha))
+				}`, gitRepo, shaStr)
 
 			session := runIn(jsonIn, inDestination, 0)
 
@@ -162,7 +164,7 @@ var _ = Describe("In", func() {
 
 			Ω(output).Should(Equal(inResponse{
 				Version: version{
-					Ref: string(strings.TrimSpace(string(sha))),
+					Ref: shaStr,
 				},
 				Metadata: []metadataPair{
 					{Name: "lock_name", Value: "some-lock"},
@@ -172,15 +174,16 @@ var _ = Describe("In", func() {
 		})
 
 		Context("when the lock from the previous version has been released and we are trying to run it again", func() {
-			var sha []byte
+			var shaStr string
 
 			Context("when the given commit claimed the lock but the lock was unclaimed afterwards", func() {
 				BeforeEach(func() {
 					var err error
 					gitVersion := exec.Command("git", "rev-parse", "HEAD")
 					gitVersion.Dir = gitRepo
-					sha, err = gitVersion.Output()
+					sha, err := gitVersion.Output()
 					Ω(err).ShouldNot(HaveOccurred())
+					shaStr = strings.TrimSpace(string(sha))
 
 					unclaimLock := exec.Command("bash", "-e", "-c", `
 						git mv lock-pool/claimed/some-lock lock-pool/unclaimed/some-lock
@@ -203,7 +206,7 @@ var _ = Describe("In", func() {
 							"version": {
 								"ref": "%s"
 							}
-						}`, gitRepo, string(sha))
+						}`, gitRepo, shaStr)
 
 					session := runIn(jsonIn, inDestination, 1)
 
@@ -233,7 +236,7 @@ var _ = Describe("In", func() {
 							"version": {
 								"ref": "%s"
 							}
-						}`, gitRepo, string(sha))
+						}`, gitRepo, shaStr)
 
 						session := runIn(jsonIn, inDestination, 1)
 
@@ -243,7 +246,7 @@ var _ = Describe("In", func() {
 			})
 
 			Context("when the commit itself unclaimed the lock", func() {
-				var sha []byte
+				var shaStr string
 				BeforeEach(func() {
 					var err error
 
@@ -259,8 +262,9 @@ var _ = Describe("In", func() {
 					gitVersion := exec.Command("git", "rev-parse", "HEAD")
 					gitVersion.Dir = gitRepo
 
-					sha, err = gitVersion.Output()
+					sha, err := gitVersion.Output()
 					Ω(err).ShouldNot(HaveOccurred())
+					shaStr = strings.TrimSpace(string(sha))
 
 					someOtherCommit := exec.Command("bash", "-e", "-c", `
 						git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
@@ -283,7 +287,7 @@ var _ = Describe("In", func() {
 								"version": {
 									"ref": "%s"
 								}
-							}`, gitRepo, string(sha))
+							}`, gitRepo, shaStr)
 
 					session := runIn(jsonIn, inDestination, 0)
 
@@ -309,7 +313,7 @@ var _ = Describe("In", func() {
 
 					Ω(output).Should(Equal(inResponse{
 						Version: version{
-							Ref: string(strings.TrimSpace(string(sha))),
+							Ref: shaStr,
 						},
 						Metadata: []metadataPair{
 							{Name: "lock_name", Value: "some-lock"},
