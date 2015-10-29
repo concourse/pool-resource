@@ -42,64 +42,20 @@ type LockHandler interface {
 }
 
 func (lp *LockPool) AcquireLock() (string, Version, error) {
-	err := lp.LockHandler.Setup()
+	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", lp.Source.Pool)
+	grabAvailableLockAction := &grabAvailableLockAction{
+		output:      lp.Output,
+		lockHandler: lp.LockHandler,
+		pool:        lp.Source.Pool,
+	}
+
+	err := lp.performRobustAction(grabAvailableLockAction)
 	if err != nil {
 		return "", Version{}, err
 	}
 
-	var (
-		lock      string
-		ref       string
-		gitOutput []byte
-	)
-
-	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", lp.Source.Pool)
-
-	unexpectedErrorRetry := 0
-	for unexpectedErrorRetry < 5 {
-		err = lp.LockHandler.ResetLock()
-		if err != nil {
-			return "", Version{}, err
-		}
-
-		lock, ref, err = lp.LockHandler.GrabAvailableLock()
-
-		if err == ErrNoLocksAvailable {
-			fmt.Fprint(lp.Output, ".")
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		if err != nil {
-			fmt.Fprintf(lp.Output, "\nfailed to acquire lock on pool: %s! (err: %s) retrying...\n", lp.Source.Pool, err)
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		gitOutput, err = lp.LockHandler.BroadcastLockPool()
-
-		if err == ErrLockConflict {
-			fmt.Fprint(lp.Output, ".")
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		if err != nil {
-			unexpectedErrorRetry++
-			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state!\nerr: %s\ngit-err: %s\nretrying...\n", err, gitOutput)
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		break
-	}
-
-	if unexpectedErrorRetry == 5 {
-		return "", Version{}, errors.New("too-many-unexpected-errors")
-	}
-
-	return lock, Version{
-		Ref: strings.TrimSpace(ref),
+	return grabAvailableLockAction.lock, Version{
+		Ref: strings.TrimSpace(grabAvailableLockAction.ref),
 	}, nil
 }
 
@@ -108,55 +64,23 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 	if err != nil {
 		return "", Version{}, err
 	}
-
 	lockName := strings.TrimSpace(string(nameFileContents))
 
 	fmt.Fprintf(lp.Output, "releasing lock: %s on pool: %s\n", lockName, lp.Source.Pool)
 
-	err = lp.LockHandler.Setup()
+	unclaimLockAction := &unclaimLockAction{
+		output:      lp.Output,
+		lockHandler: lp.LockHandler,
+		lockName:    lockName,
+	}
+
+	err = lp.performRobustAction(unclaimLockAction)
 	if err != nil {
 		return "", Version{}, err
 	}
 
-	var ref string
-	var gitOutput []byte
-	unexpectedErrorRetry := 0
-	for unexpectedErrorRetry < 5 {
-		err = lp.LockHandler.ResetLock()
-		if err != nil {
-			return "", Version{}, err
-		}
-
-		ref, err = lp.LockHandler.UnclaimLock(lockName)
-		if err != nil {
-			fmt.Fprintf(lp.Output, "\nfailed to unclaim the lock: %s! (err: %s)\n", lockName, err)
-			return "", Version{}, err
-		}
-
-		gitOutput, err = lp.LockHandler.BroadcastLockPool()
-
-		if err == ErrLockConflict {
-			fmt.Fprint(lp.Output, ".")
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		if err != nil {
-			unexpectedErrorRetry++
-			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state!\nerr: %s\ngit-err: %s\nretrying...\n", err, gitOutput)
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		break
-	}
-
-	if unexpectedErrorRetry == 5 {
-		return "", Version{}, errors.New("too-many-unexpected-errors")
-	}
-
 	return lockName, Version{
-		Ref: strings.TrimSpace(ref),
+		Ref: strings.TrimSpace(unclaimLockAction.ref),
 	}, nil
 }
 
@@ -165,61 +89,30 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the name file of your lock: %s", err)
 	}
-
 	lockName := strings.TrimSpace(string(nameFileContents))
 
 	lockContents, err := ioutil.ReadFile(filepath.Join(inDir, "metadata"))
+
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the metadata file of your lock: %s", err)
 	}
 
 	fmt.Fprintf(lp.Output, "adding lock: %s to pool: %s\n", lockName, lp.Source.Pool)
 
-	err = lp.LockHandler.Setup()
+	addLockAction := &addLockAction{
+		output:       lp.Output,
+		lockHandler:  lp.LockHandler,
+		lockName:     lockName,
+		lockContents: lockContents,
+	}
+
+	err = lp.performRobustAction(addLockAction)
 	if err != nil {
 		return "", Version{}, err
 	}
 
-	var ref string
-	var gitOutput []byte
-	unexpectedErrorRetry := 0
-	for unexpectedErrorRetry < 5 {
-		err = lp.LockHandler.ResetLock()
-		if err != nil {
-			return "", Version{}, err
-		}
-
-		ref, err = lp.LockHandler.AddLock(lockName, lockContents)
-		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to add the lock: %s! (err: %s) retrying...\n", lockName, err)
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		gitOutput, err = lp.LockHandler.BroadcastLockPool()
-
-		if err == ErrLockConflict {
-			fmt.Fprint(lp.Output, ".")
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		if err != nil {
-			unexpectedErrorRetry++
-			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state!\nerr: %s\ngit-err: %s\nretrying...\n", err, gitOutput)
-			time.Sleep(lp.Source.RetryDelay)
-			continue
-		}
-
-		break
-	}
-
-	if unexpectedErrorRetry == 5 {
-		return "", Version{}, errors.New("too-many-unexpected-errors")
-	}
-
 	return lockName, Version{
-		Ref: strings.TrimSpace(ref),
+		Ref: strings.TrimSpace(addLockAction.ref),
 	}, nil
 }
 
@@ -233,31 +126,51 @@ func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
 
 	fmt.Fprintf(lp.Output, "removing lock: %s on pool: %s\n", lockName, lp.Source.Pool)
 
-	err = lp.LockHandler.Setup()
+	removeLockAction := &removeLockAction{
+		output:      lp.Output,
+		lockHandler: lp.LockHandler,
+		lockName:    lockName,
+	}
+
+	err = lp.performRobustAction(removeLockAction)
 	if err != nil {
 		return "", Version{}, err
 	}
 
-	var ref string
+	return lockName, Version{
+		Ref: strings.TrimSpace(removeLockAction.ref),
+	}, nil
+}
+
+func (lp *LockPool) performRobustAction(action lockPoolAction) error {
+	err := lp.LockHandler.Setup()
+	if err != nil {
+		return err
+	}
+
 	var gitOutput []byte
 	unexpectedErrorRetry := 0
 	for unexpectedErrorRetry < 5 {
 		err = lp.LockHandler.ResetLock()
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to reset the lock: %s! (err: %s)\n", lockName, err)
-			return "", Version{}, err
+			return err
 		}
 
-		ref, err = lp.LockHandler.RemoveLock(lockName)
+		retry, err := action.Run()
+
 		if err != nil {
-			fmt.Fprintf(lp.Output, "failed to remove the lock: %s! (err: %s)\n", lockName, err)
-			return "", Version{}, err
+			return err
+		}
+
+		if retry {
+			time.Sleep(lp.Source.RetryDelay)
+			continue
 		}
 
 		gitOutput, err = lp.LockHandler.BroadcastLockPool()
 
 		if err == ErrLockConflict {
-			fmt.Fprintf(lp.Output, ".")
+			fmt.Fprint(lp.Output, ".")
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
@@ -268,14 +181,13 @@ func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
+
 		break
 	}
 
 	if unexpectedErrorRetry == 5 {
-		return "", Version{}, errors.New("too-many-unexpected-errors")
+		return errors.New("too-many-unexpected-errors")
 	}
 
-	return lockName, Version{
-		Ref: strings.TrimSpace(ref),
-	}, nil
+	return nil
 }
