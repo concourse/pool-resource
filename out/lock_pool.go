@@ -42,20 +42,36 @@ type LockHandler interface {
 }
 
 func (lp *LockPool) AcquireLock() (string, Version, error) {
-	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", lp.Source.Pool)
-	grabAvailableLockAction := &grabAvailableLockAction{
-		output:      lp.Output,
-		lockHandler: lp.LockHandler,
-		pool:        lp.Source.Pool,
-	}
+	var (
+		lock string
+		ref  string
+	)
 
-	err := lp.performRobustAction(grabAvailableLockAction)
+	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", lp.Source.Pool)
+
+	err := lp.performRobustAction(func() (bool, error) {
+		var err error
+		lock, ref, err = lp.LockHandler.GrabAvailableLock()
+
+		if err == ErrNoLocksAvailable {
+			fmt.Fprint(lp.Output, ".")
+			return true, nil
+		}
+
+		if err != nil {
+			fmt.Fprintf(lp.Output, "\nfailed to acquire lock on pool: %s! (err: %s) retrying...\n", lp.Source.Pool, err)
+			return true, nil
+		}
+
+		return false, nil
+	})
+
 	if err != nil {
 		return "", Version{}, err
 	}
 
-	return grabAvailableLockAction.lock, Version{
-		Ref: strings.TrimSpace(grabAvailableLockAction.ref),
+	return lock, Version{
+		Ref: strings.TrimSpace(ref),
 	}, nil
 }
 
@@ -68,19 +84,25 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 
 	fmt.Fprintf(lp.Output, "releasing lock: %s on pool: %s\n", lockName, lp.Source.Pool)
 
-	unclaimLockAction := &unclaimLockAction{
-		output:      lp.Output,
-		lockHandler: lp.LockHandler,
-		lockName:    lockName,
-	}
+	var ref string
+	err = lp.performRobustAction(func() (bool, error) {
+		var err error
+		ref, err = lp.LockHandler.UnclaimLock(lockName)
 
-	err = lp.performRobustAction(unclaimLockAction)
+		if err != nil {
+			fmt.Fprintf(lp.Output, "\nfailed to unclaim the lock: %s! (err: %s)\n", lockName, err)
+			return false, err
+		}
+
+		return false, nil
+	})
+
 	if err != nil {
 		return "", Version{}, err
 	}
 
 	return lockName, Version{
-		Ref: strings.TrimSpace(unclaimLockAction.ref),
+		Ref: strings.TrimSpace(ref),
 	}, nil
 }
 
@@ -92,27 +114,32 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 	lockName := strings.TrimSpace(string(nameFileContents))
 
 	lockContents, err := ioutil.ReadFile(filepath.Join(inDir, "metadata"))
-
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the metadata file of your lock: %s", err)
 	}
 
 	fmt.Fprintf(lp.Output, "adding lock: %s to pool: %s\n", lockName, lp.Source.Pool)
 
-	addLockAction := &addLockAction{
-		output:       lp.Output,
-		lockHandler:  lp.LockHandler,
-		lockName:     lockName,
-		lockContents: lockContents,
-	}
+	var ref string
 
-	err = lp.performRobustAction(addLockAction)
+	err = lp.performRobustAction(func() (bool, error) {
+		var err error
+		ref, err = lp.LockHandler.AddLock(lockName, lockContents)
+
+		if err != nil {
+			fmt.Fprintf(lp.Output, "failed to add the lock: %s! (err: %s) retrying...\n", lockName, err)
+			return true, nil
+		}
+
+		return false, nil
+	})
+
 	if err != nil {
 		return "", Version{}, err
 	}
 
 	return lockName, Version{
-		Ref: strings.TrimSpace(addLockAction.ref),
+		Ref: strings.TrimSpace(ref),
 	}, nil
 }
 
@@ -126,23 +153,30 @@ func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
 
 	fmt.Fprintf(lp.Output, "removing lock: %s on pool: %s\n", lockName, lp.Source.Pool)
 
-	removeLockAction := &removeLockAction{
-		output:      lp.Output,
-		lockHandler: lp.LockHandler,
-		lockName:    lockName,
-	}
+	var ref string
 
-	err = lp.performRobustAction(removeLockAction)
+	err = lp.performRobustAction(func() (bool, error) {
+		var err error
+		ref, err = lp.LockHandler.RemoveLock(lockName)
+
+		if err != nil {
+			fmt.Fprintf(lp.Output, "\nfailed to remove the lock: %s! (err: %s)\n", lockName, err)
+			return false, err
+		}
+
+		return false, nil
+	})
+
 	if err != nil {
 		return "", Version{}, err
 	}
 
 	return lockName, Version{
-		Ref: strings.TrimSpace(removeLockAction.ref),
+		Ref: strings.TrimSpace(ref),
 	}, nil
 }
 
-func (lp *LockPool) performRobustAction(action lockPoolAction) error {
+func (lp *LockPool) performRobustAction(action func() (bool, error)) error {
 	err := lp.LockHandler.Setup()
 	if err != nil {
 		return err
@@ -156,7 +190,7 @@ func (lp *LockPool) performRobustAction(action lockPoolAction) error {
 			return err
 		}
 
-		retry, err := action.Run()
+		retry, err := action()
 
 		if err != nil {
 			return err
