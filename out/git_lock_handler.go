@@ -181,7 +181,7 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 	return name, string(ref), nil
 }
 
-func (glh *GitLockHandler) BroadcastLockPool() error {
+func (glh *GitLockHandler) BroadcastLockPool() ([]byte, error) {
 	contents, err := glh.git("push", "origin", "HEAD:"+glh.Source.Branch)
 
 	// if we push and everything is up to date then someone else has made
@@ -189,18 +189,18 @@ func (glh *GitLockHandler) BroadcastLockPool() error {
 	//
 	// we need to stop and try again
 	if strings.Contains(string(contents), falsePushString) {
-		return ErrLockConflict
+		return contents, ErrLockConflict
 	}
 
 	if strings.Contains(string(contents), pushRejectedString) {
-		return ErrLockConflict
+		return contents, ErrLockConflict
 	}
 
 	if strings.Contains(string(contents), pushRemoteRejectedString) {
-		return ErrLockConflict
+		return contents, ErrLockConflict
 	}
 
-	return err
+	return contents, err
 }
 
 func (glh *GitLockHandler) git(args ...string) ([]byte, error) {

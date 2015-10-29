@@ -50,11 +50,12 @@ type FakeLockHandler struct {
 	setupReturns     struct {
 		result1 error
 	}
-	BroadcastLockPoolStub        func() error
+	BroadcastLockPoolStub        func() ([]byte, error)
 	broadcastLockPoolMutex       sync.RWMutex
 	broadcastLockPoolArgsForCall []struct{}
 	broadcastLockPoolReturns     struct {
-		result1 error
+		result1 []byte
+		result2 error
 	}
 	ResetLockStub        func() error
 	resetLockMutex       sync.RWMutex
@@ -214,14 +215,14 @@ func (fake *FakeLockHandler) SetupReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeLockHandler) BroadcastLockPool() error {
+func (fake *FakeLockHandler) BroadcastLockPool() ([]byte, error) {
 	fake.broadcastLockPoolMutex.Lock()
 	fake.broadcastLockPoolArgsForCall = append(fake.broadcastLockPoolArgsForCall, struct{}{})
 	fake.broadcastLockPoolMutex.Unlock()
 	if fake.BroadcastLockPoolStub != nil {
 		return fake.BroadcastLockPoolStub()
 	} else {
-		return fake.broadcastLockPoolReturns.result1
+		return fake.broadcastLockPoolReturns.result1, fake.broadcastLockPoolReturns.result2
 	}
 }
 
@@ -231,11 +232,12 @@ func (fake *FakeLockHandler) BroadcastLockPoolCallCount() int {
 	return len(fake.broadcastLockPoolArgsForCall)
 }
 
-func (fake *FakeLockHandler) BroadcastLockPoolReturns(result1 error) {
+func (fake *FakeLockHandler) BroadcastLockPoolReturns(result1 []byte, result2 error) {
 	fake.BroadcastLockPoolStub = nil
 	fake.broadcastLockPoolReturns = struct {
-		result1 error
-	}{result1}
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeLockHandler) ResetLock() error {

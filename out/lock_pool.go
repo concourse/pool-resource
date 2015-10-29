@@ -1,6 +1,7 @@
 package out
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -36,7 +37,7 @@ type LockHandler interface {
 	RemoveLock(lock string) (version string, err error)
 
 	Setup() error
-	BroadcastLockPool() error
+	BroadcastLockPool() ([]byte, error)
 	ResetLock() error
 }
 
@@ -47,13 +48,15 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 	}
 
 	var (
-		lock string
-		ref  string
+		lock      string
+		ref       string
+		gitOutput []byte
 	)
 
 	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", lp.Source.Pool)
 
-	for {
+	unexpectedErrorRetry := 0
+	for unexpectedErrorRetry < 5 {
 		err = lp.LockHandler.ResetLock()
 		if err != nil {
 			return "", Version{}, err
@@ -73,7 +76,7 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 			continue
 		}
 
-		err = lp.LockHandler.BroadcastLockPool()
+		gitOutput, err = lp.LockHandler.BroadcastLockPool()
 
 		if err == ErrLockConflict {
 			fmt.Fprint(lp.Output, ".")
@@ -82,12 +85,17 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 		}
 
 		if err != nil {
-			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			unexpectedErrorRetry++
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state!\nerr: %s\ngit-err: %s\nretrying...\n", err, gitOutput)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
 
 		break
+	}
+
+	if unexpectedErrorRetry == 5 {
+		return "", Version{}, errors.New("too-many-unexpected-errors")
 	}
 
 	return lock, Version{
@@ -111,7 +119,9 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 	}
 
 	var ref string
-	for {
+	var gitOutput []byte
+	unexpectedErrorRetry := 0
+	for unexpectedErrorRetry < 5 {
 		err = lp.LockHandler.ResetLock()
 		if err != nil {
 			return "", Version{}, err
@@ -123,7 +133,7 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 			return "", Version{}, err
 		}
 
-		err = lp.LockHandler.BroadcastLockPool()
+		gitOutput, err = lp.LockHandler.BroadcastLockPool()
 
 		if err == ErrLockConflict {
 			fmt.Fprint(lp.Output, ".")
@@ -132,12 +142,17 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 		}
 
 		if err != nil {
-			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			unexpectedErrorRetry++
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state!\nerr: %s\ngit-err: %s\nretrying...\n", err, gitOutput)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
 
 		break
+	}
+
+	if unexpectedErrorRetry == 5 {
+		return "", Version{}, errors.New("too-many-unexpected-errors")
 	}
 
 	return lockName, Version{
@@ -166,7 +181,9 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 	}
 
 	var ref string
-	for {
+	var gitOutput []byte
+	unexpectedErrorRetry := 0
+	for unexpectedErrorRetry < 5 {
 		err = lp.LockHandler.ResetLock()
 		if err != nil {
 			return "", Version{}, err
@@ -179,7 +196,7 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 			continue
 		}
 
-		err = lp.LockHandler.BroadcastLockPool()
+		gitOutput, err = lp.LockHandler.BroadcastLockPool()
 
 		if err == ErrLockConflict {
 			fmt.Fprint(lp.Output, ".")
@@ -188,12 +205,17 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 		}
 
 		if err != nil {
-			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			unexpectedErrorRetry++
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state!\nerr: %s\ngit-err: %s\nretrying...\n", err, gitOutput)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
 
 		break
+	}
+
+	if unexpectedErrorRetry == 5 {
+		return "", Version{}, errors.New("too-many-unexpected-errors")
 	}
 
 	return lockName, Version{
@@ -217,8 +239,9 @@ func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
 	}
 
 	var ref string
-
-	for {
+	var gitOutput []byte
+	unexpectedErrorRetry := 0
+	for unexpectedErrorRetry < 5 {
 		err = lp.LockHandler.ResetLock()
 		if err != nil {
 			fmt.Fprintf(lp.Output, "failed to reset the lock: %s! (err: %s)\n", lockName, err)
@@ -231,7 +254,7 @@ func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
 			return "", Version{}, err
 		}
 
-		err = lp.LockHandler.BroadcastLockPool()
+		gitOutput, err = lp.LockHandler.BroadcastLockPool()
 
 		if err == ErrLockConflict {
 			fmt.Fprintf(lp.Output, ".")
@@ -240,11 +263,16 @@ func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
 		}
 
 		if err != nil {
-			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state! (err: %s) retrying...\n", err)
+			unexpectedErrorRetry++
+			fmt.Fprintf(lp.Output, "\nfailed to broadcast the change to lock state!\nerr: %s\ngit-err: %s\nretrying...\n", err, gitOutput)
 			time.Sleep(lp.Source.RetryDelay)
 			continue
 		}
 		break
+	}
+
+	if unexpectedErrorRetry == 5 {
+		return "", Version{}, errors.New("too-many-unexpected-errors")
 	}
 
 	return lockName, Version{
