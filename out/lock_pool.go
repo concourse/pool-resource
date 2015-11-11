@@ -35,10 +35,37 @@ type LockHandler interface {
 	UnclaimLock(lock string) (version string, err error)
 	AddLock(lock string, contents []byte) (version string, err error)
 	RemoveLock(lock string) (version string, err error)
+	ClaimLock(lock string) (version string, err error)
 
 	Setup() error
 	BroadcastLockPool() ([]byte, error)
 	ResetLock() error
+}
+
+func (lp *LockPool) ClaimLock(lock string) (Version, error) {
+	var ref string
+
+	err := lp.performRobustAction(func() (bool, error) {
+		var err error
+
+		ref, err = lp.LockHandler.ClaimLock(lock)
+
+		if err == ErrNoLocksAvailable {
+			fmt.Fprint(lp.Output, ".")
+			return true, nil
+		}
+
+		if err != nil {
+			fmt.Fprintf(lp.Output, "\nfailed to acquire lock on pool: %s! (err: %s) retrying...\n", lp.Source.Pool, err)
+			return true, nil
+		}
+
+		return false, nil
+	})
+
+	return Version{
+		Ref: strings.TrimSpace(ref),
+	}, err
 }
 
 func (lp *LockPool) AcquireLock() (string, Version, error) {

@@ -44,6 +44,15 @@ type FakeLockHandler struct {
 		result1 string
 		result2 error
 	}
+	ClaimLockStub        func(lock string) (version string, err error)
+	claimLockMutex       sync.RWMutex
+	claimLockArgsForCall []struct {
+		lock string
+	}
+	claimLockReturns struct {
+		result1 string
+		result2 error
+	}
 	SetupStub        func() error
 	setupMutex       sync.RWMutex
 	setupArgsForCall []struct{}
@@ -186,6 +195,39 @@ func (fake *FakeLockHandler) RemoveLockArgsForCall(i int) string {
 func (fake *FakeLockHandler) RemoveLockReturns(result1 string, result2 error) {
 	fake.RemoveLockStub = nil
 	fake.removeLockReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeLockHandler) ClaimLock(lock string) (version string, err error) {
+	fake.claimLockMutex.Lock()
+	fake.claimLockArgsForCall = append(fake.claimLockArgsForCall, struct {
+		lock string
+	}{lock})
+	fake.claimLockMutex.Unlock()
+	if fake.ClaimLockStub != nil {
+		return fake.ClaimLockStub(lock)
+	} else {
+		return fake.claimLockReturns.result1, fake.claimLockReturns.result2
+	}
+}
+
+func (fake *FakeLockHandler) ClaimLockCallCount() int {
+	fake.claimLockMutex.RLock()
+	defer fake.claimLockMutex.RUnlock()
+	return len(fake.claimLockArgsForCall)
+}
+
+func (fake *FakeLockHandler) ClaimLockArgsForCall(i int) string {
+	fake.claimLockMutex.RLock()
+	defer fake.claimLockMutex.RUnlock()
+	return fake.claimLockArgsForCall[i].lock
+}
+
+func (fake *FakeLockHandler) ClaimLockReturns(result1 string, result2 error) {
+	fake.ClaimLockStub = nil
+	fake.claimLockReturns = struct {
 		result1 string
 		result2 error
 	}{result1, result2}

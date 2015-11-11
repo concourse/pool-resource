@@ -19,6 +19,7 @@ type OutParams struct {
 	Acquire bool   `json:"acquire"`
 	Add     string `json:"add"`
 	Remove  string `json:"remove"`
+	Claim   string `json:"claim"`
 }
 
 type OutRequest struct {

@@ -375,6 +375,162 @@ var _ = Describe("Lock Pool", func() {
 		})
 	})
 
+	Context("Claiming a lock", func() {
+		Context("when setup fails", func() {
+			BeforeEach(func() {
+				fakeLockHandler.SetupReturns(errors.New("some-error"))
+			})
+
+			It("returns an error", func() {
+				_, err := lockPool.ClaimLock("some-lock")
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when setup succeeds", func() {
+
+			Context("when resetting the lock fails", func() {
+				BeforeEach(func() {
+					fakeLockHandler.ResetLockReturns(errors.New("some-error"))
+				})
+
+				It("returns an error", func() {
+					_, err := lockPool.ClaimLock("some-lock")
+					Ω(err).Should(HaveOccurred())
+				})
+			})
+
+			Context("when resetting the lock succeeds", func() {
+				It("tries to claim the specific lock", func() {
+					_, err := lockPool.ClaimLock("some-lock")
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(fakeLockHandler.ClaimLockCallCount()).Should(Equal(1))
+					Ω(fakeLockHandler.ClaimLockArgsForCall(0)).Should(Equal("some-lock"))
+				})
+
+				Context("when attempting to claim a lock fails", func() {
+					BeforeEach(func() {
+						called := false
+
+						fakeLockHandler.ClaimLockStub = func(lock string) (string, error) {
+							// succeed on second call
+							if !called {
+								called = true
+								return "", errors.New("disaster")
+							} else {
+								return "", nil
+							}
+						}
+					})
+
+					It("retries", func() {
+						_, err := lockPool.ClaimLock("some-lock")
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(fakeLockHandler.ClaimLockCallCount()).Should(Equal(2))
+					})
+				})
+
+				Context("when claiming a specific lock succeeds", func() {
+					BeforeEach(func() {
+						fakeLockHandler.ClaimLockReturns("some-ref", nil)
+					})
+
+					It("tries to broadcast to the lock pool", func() {
+						_, err := lockPool.ClaimLock("some-lock")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(1))
+					})
+
+					Context("when broadcasting fails with ", func() {
+						Context("for an unexpected reason", func() {
+							BeforeEach(func() {
+								called := false
+
+								fakeLockHandler.BroadcastLockPoolStub = func() ([]byte, error) {
+									// succeed on second call
+									if !called {
+										called = true
+										return nil, errors.New("disaster")
+									} else {
+										return nil, nil
+									}
+								}
+							})
+
+							It("logs an error as it retries", func() {
+								_, err := lockPool.ClaimLock("some-lock")
+								Ω(err).ShouldNot(HaveOccurred())
+
+								Ω(output).Should(gbytes.Say("err"))
+
+								Ω(fakeLockHandler.ResetLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.ClaimLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+							})
+
+							Context("more than 5 times", func() {
+								BeforeEach(func() {
+									fakeLockHandler.BroadcastLockPoolReturns([]byte("some git message"), errors.New("disaster"))
+								})
+
+								It("shows the underlying git error", func() {
+									_, err := lockPool.ClaimLock("some-lock")
+									Ω(err).Should(HaveOccurred())
+
+									Ω(output).Should(gbytes.Say("some git message"))
+
+									Ω(fakeLockHandler.ResetLockCallCount()).Should(Equal(5))
+									Ω(fakeLockHandler.ClaimLockCallCount()).Should(Equal(5))
+									Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(5))
+								})
+							})
+						})
+
+						Context("for an expected reason", func() {
+							BeforeEach(func() {
+								called := false
+
+								fakeLockHandler.BroadcastLockPoolStub = func() ([]byte, error) {
+									// succeed on second call
+									if !called {
+										called = true
+										return nil, out.ErrLockConflict
+									} else {
+										return nil, nil
+									}
+								}
+							})
+
+							It("does not log an error as it retries", func() {
+								_, err := lockPool.ClaimLock("some-lock")
+								Ω(err).ShouldNot(HaveOccurred())
+
+								// no logging for expected errors
+								Ω(output).ShouldNot(gbytes.Say("err"))
+
+								Ω(fakeLockHandler.ClaimLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
+							})
+						})
+					})
+
+					Context("when broadcasting succeeds", func() {
+						It("returns the a version", func() {
+							version, err := lockPool.ClaimLock("some-lock")
+
+							Ω(err).ShouldNot(HaveOccurred())
+							Ω(version).Should(Equal(out.Version{
+								Ref: "some-ref",
+							}))
+						})
+					})
+				})
+			})
+		})
+	})
+
 	Context("Releasing a lock", func() {
 		var lockDir string
 

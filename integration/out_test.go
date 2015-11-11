@@ -125,7 +125,7 @@ func itWorksWithBranch(branchName string) {
 				})
 			})
 
-			Context("when the branch isn't set", func() {
+			Context("when the params aren't set", func() {
 				BeforeEach(func() {
 					outRequest.Params = out.OutParams{}
 				})
@@ -133,7 +133,7 @@ func itWorksWithBranch(branchName string) {
 				It("complains about it", func() {
 					errorMessages := string(session.Err.Contents())
 
-					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, or add)"))
+					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, claim, or add)"))
 				})
 			})
 		})
@@ -286,11 +286,110 @@ func itWorksWithBranch(branchName string) {
 			})
 		})
 
+		Context("when claiming a specific lock", func() {
+			BeforeEach(func() {
+				outRequest = out.OutRequest{
+					Source: out.Source{
+						URI:        bareGitRepo,
+						Branch:     branchName,
+						Pool:       "lock-pool",
+						RetryDelay: 100 * time.Millisecond,
+					},
+					Params: out.OutParams{
+						Claim: "some-lock",
+					},
+				}
+
+				session := runOut(outRequest, sourceDir)
+				Eventually(session).Should(gexec.Exit(0))
+
+				err := json.Unmarshal(session.Out.Contents(), &outResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("moves the specific lock to claimed", func() {
+				version := getVersion(bareGitRepo, "origin/"+branchName)
+
+				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer os.RemoveAll(reCloneRepo)
+
+				reClone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
+				reClone.Dir = reCloneRepo
+				err = reClone.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = ioutil.ReadFile(filepath.Join(reCloneRepo, "lock-pool", "claimed", "some-lock"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(outResponse).Should(Equal(out.OutResponse{
+					Version: version,
+					Metadata: []out.MetadataPair{
+						{Name: "lock_name", Value: "some-lock"},
+						{Name: "pool_name", Value: "lock-pool"},
+					},
+				}))
+			})
+
+			It("commits with a descriptive message", func() {
+				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 claiming: some-lock"))
+			})
+
+			Context("when the specific lock has already been claimed", func() {
+				var unclaimLockDir string
+				BeforeEach(func() {
+					var err error
+					unclaimLockDir, err = ioutil.TempDir("", "claiming-locks")
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				AfterEach(func() {
+					err := os.RemoveAll(unclaimLockDir)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("continues to acquire the same lock", func() {
+					claimSession := runOut(outRequest, sourceDir)
+					Consistently(claimSession).ShouldNot(gexec.Exit(0))
+
+					unclaimLock := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
+						git clone --branch %s %s .
+
+						git config user.email "ginkgo@localhost"
+						git config user.name "Ginkgo Local"
+
+						git mv lock-pool/claimed/some-lock lock-pool/unclaimed/
+						git commit -am "unclaim some-lock"
+						git push
+					`, branchName, bareGitRepo))
+
+					unclaimLock.Stdout = GinkgoWriter
+					unclaimLock.Stderr = GinkgoWriter
+					unclaimLock.Dir = unclaimLockDir
+
+					err := unclaimLock.Run()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(claimSession).Should(gexec.Exit(0))
+				})
+			})
+		})
+
 		Context("when removing a lock", func() {
 			var myLocksGetDir string
 			var outRemoveRequest out.OutRequest
 			var outRemoveResponse out.OutResponse
 
+			var session *gexec.Session
 			BeforeEach(func() {
 				outRequest = out.OutRequest{
 					Source: out.Source{
@@ -303,11 +402,15 @@ func itWorksWithBranch(branchName string) {
 					},
 				}
 
-				session := runOut(outRequest, sourceDir)
+				session = runOut(outRequest, sourceDir)
 				Eventually(session).Should(gexec.Exit(0))
 
 				err := json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				session.Kill()
 			})
 
 			JustBeforeEach(func() {

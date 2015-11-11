@@ -71,6 +71,14 @@ func main() {
 		}
 	}
 
+	if request.Params.Claim != "" {
+		lock = request.Params.Claim
+		version, err = lockPool.ClaimLock(lock)
+		if err != nil {
+			fatal("claiming lock", err)
+		}
+	}
+
 	err = json.NewEncoder(os.Stdout).Encode(out.OutResponse{
 		Version: version,
 		Metadata: []out.MetadataPair{
@@ -104,8 +112,12 @@ func validateRequest(request out.OutRequest) {
 		errorMessages = append(errorMessages, "invalid payload (missing branch)")
 	}
 
-	if request.Params.Acquire == false && request.Params.Release == "" && request.Params.Add == "" && request.Params.Remove == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, or add)")
+	if request.Params.Acquire == false &&
+		request.Params.Release == "" &&
+		request.Params.Add == "" &&
+		request.Params.Remove == "" &&
+		request.Params.Claim == "" {
+		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, or add)")
 	}
 
 	if len(errorMessages) > 0 {
