@@ -93,6 +93,10 @@ One of the following is required.
   pool's unclaimed directory to the claimed directory. Acquiring will retry
   until a lock becomes available.
 
+* `claim`: If set, the specified lock from the pool will be acquired, rather
+  than a random one (as in `acquire`). Like `acquire`, claiming will retry
+  until the specific lock becomes available.
+
 * `release`: If set, we will release the lock by moving it from claimed to
   unclaimed. The value is the path of the lock to release (a directory
   containing `name` and `metadata`), which typically is just the step that

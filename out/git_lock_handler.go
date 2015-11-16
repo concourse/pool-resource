@@ -38,20 +38,17 @@ func (glh *GitLockHandler) ClaimLock(lockName string) (string, error) {
 
 	_, err = glh.git("mv", filepath.Join(glh.Source.Pool, "unclaimed", lockName), filepath.Join(glh.Source.Pool, "claimed", lockName))
 	if err != nil {
-		fmt.Println("glh.git(mv")
 		return "", err
 	}
 
 	commitMessage := fmt.Sprintf(glh.messagePrefix()+"claiming: %s", lockName)
 	_, err = glh.git("commit", "-m", commitMessage)
 	if err != nil {
-		fmt.Println("glh.git(commit")
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
-		fmt.Println("glh.git(rev-parse)")
 		return "", err
 	}
 
