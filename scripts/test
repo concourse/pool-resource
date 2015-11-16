@@ -10,7 +10,7 @@ cleanup() {
   rm built-out
 }
 
-pool_resource_dir=$(realpath $(dirname $(dirname $0)))
+pool_resource_dir=$(cd $(dirname $0)/.. && pwd)
 
 if not_installed ginkgo; then
   echo "# ginkgo is not installed! run the following command:"
