@@ -25,13 +25,14 @@ type FakeLockHandler struct {
 		result1 string
 		result2 error
 	}
-	AddUnclaimedLockStub        func(lock string, contents []byte) (version string, err error)
-	addUnclaimedLockMutex       sync.RWMutex
-	addUnclaimedLockArgsForCall []struct {
-		lock     string
-		contents []byte
+	AddLockStub        func(lock string, contents []byte, initiallyClaimed bool) (version string, err error)
+	addLockMutex       sync.RWMutex
+	addLockArgsForCall []struct {
+		lock             string
+		contents         []byte
+		initiallyClaimed bool
 	}
-	addUnclaimedLockReturns struct {
+	addLockReturns struct {
 		result1 string
 		result2 error
 	}
@@ -133,35 +134,36 @@ func (fake *FakeLockHandler) UnclaimLockReturns(result1 string, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeLockHandler) AddUnclaimedLock(lock string, contents []byte) (version string, err error) {
-	fake.addUnclaimedLockMutex.Lock()
-	fake.addUnclaimedLockArgsForCall = append(fake.addUnclaimedLockArgsForCall, struct {
-		lock     string
-		contents []byte
-	}{lock, contents})
-	fake.addUnclaimedLockMutex.Unlock()
-	if fake.AddUnclaimedLockStub != nil {
-		return fake.AddUnclaimedLockStub(lock, contents)
+func (fake *FakeLockHandler) AddLock(lock string, contents []byte, initiallyClaimed bool) (version string, err error) {
+	fake.addLockMutex.Lock()
+	fake.addLockArgsForCall = append(fake.addLockArgsForCall, struct {
+		lock             string
+		contents         []byte
+		initiallyClaimed bool
+	}{lock, contents, initiallyClaimed})
+	fake.addLockMutex.Unlock()
+	if fake.AddLockStub != nil {
+		return fake.AddLockStub(lock, contents, initiallyClaimed)
 	} else {
-		return fake.addUnclaimedLockReturns.result1, fake.addUnclaimedLockReturns.result2
+		return fake.addLockReturns.result1, fake.addLockReturns.result2
 	}
 }
 
-func (fake *FakeLockHandler) AddUnclaimedLockCallCount() int {
-	fake.addUnclaimedLockMutex.RLock()
-	defer fake.addUnclaimedLockMutex.RUnlock()
-	return len(fake.addUnclaimedLockArgsForCall)
+func (fake *FakeLockHandler) AddLockCallCount() int {
+	fake.addLockMutex.RLock()
+	defer fake.addLockMutex.RUnlock()
+	return len(fake.addLockArgsForCall)
 }
 
-func (fake *FakeLockHandler) AddUnclaimedLockArgsForCall(i int) (string, []byte) {
-	fake.addUnclaimedLockMutex.RLock()
-	defer fake.addUnclaimedLockMutex.RUnlock()
-	return fake.addUnclaimedLockArgsForCall[i].lock, fake.addUnclaimedLockArgsForCall[i].contents
+func (fake *FakeLockHandler) AddLockArgsForCall(i int) (string, []byte, bool) {
+	fake.addLockMutex.RLock()
+	defer fake.addLockMutex.RUnlock()
+	return fake.addLockArgsForCall[i].lock, fake.addLockArgsForCall[i].contents, fake.addLockArgsForCall[i].initiallyClaimed
 }
 
-func (fake *FakeLockHandler) AddUnclaimedLockReturns(result1 string, result2 error) {
-	fake.AddUnclaimedLockStub = nil
-	fake.addUnclaimedLockReturns = struct {
+func (fake *FakeLockHandler) AddLockReturns(result1 string, result2 error) {
+	fake.AddLockStub = nil
+	fake.addLockReturns = struct {
 		result1 string
 		result2 error
 	}{result1, result2}

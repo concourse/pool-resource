@@ -513,7 +513,7 @@ var _ = Describe("Lock Pool", func() {
 		})
 	})
 
-	Context("adding a lock", func() {
+	Context("adding an initially unclaimed lock", func() {
 		var lockDir string
 
 		BeforeEach(func() {
@@ -527,9 +527,9 @@ var _ = Describe("Lock Pool", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		Context("when a no files file doesn't exist", func() {
+		Context("when no files exist", func() {
 			It("returns an error", func() {
-				_, _, err := lockPool.AddLock(lockDir)
+				_, _, err := lockPool.AddUnclaimedLock(lockDir)
 				Ω(err).Should(HaveOccurred())
 			})
 		})
@@ -549,27 +549,28 @@ var _ = Describe("Lock Pool", func() {
 				})
 
 				It("returns an error", func() {
-					_, _, err := lockPool.AddLock(lockDir)
+					_, _, err := lockPool.AddUnclaimedLock(lockDir)
 					Ω(err).Should(HaveOccurred())
 				})
 			})
 
 			Context("when setup succeeds", func() {
 				It("tries to add the lock it found in the name file", func() {
-					_, _, err := lockPool.AddLock(lockDir)
+					_, _, err := lockPool.AddUnclaimedLock(lockDir)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(1))
-					lockName, lockContents := fakeLockHandler.AddUnclaimedLockArgsForCall(0)
+					Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(1))
+					lockName, lockContents, initiallyClaimed := fakeLockHandler.AddLockArgsForCall(0)
 					Ω(lockName).Should(Equal("some-lock"))
 					Ω(string(lockContents)).Should(Equal("lock-contents"))
+					Ω(initiallyClaimed).Should(BeFalse())
 				})
 
 				Context("when adding the lock fails", func() {
 					BeforeEach(func() {
 						called := false
 
-						fakeLockHandler.AddUnclaimedLockStub = func(lockName string, lockContents []byte) (string, error) {
+						fakeLockHandler.AddLockStub = func(_ string, _ []byte, _ bool) (string, error) {
 							// succeed on second call
 							if !called {
 								called = true
@@ -581,16 +582,16 @@ var _ = Describe("Lock Pool", func() {
 					})
 
 					It("does not return an error as it retries", func() {
-						_, _, err := lockPool.AddLock(lockDir)
+						_, _, err := lockPool.AddUnclaimedLock(lockDir)
 						Ω(err).ShouldNot(HaveOccurred())
 
-						Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(2))
+						Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
 					})
 				})
 
 				Context("when adding the lock succeeds", func() {
 					BeforeEach(func() {
-						fakeLockHandler.AddUnclaimedLockReturns("some-ref", nil)
+						fakeLockHandler.AddLockReturns("some-ref", nil)
 					})
 
 					It("tries to broadcast to the lock pool", func() {
@@ -602,15 +603,127 @@ var _ = Describe("Lock Pool", func() {
 
 					ValidateSharedBehaviorDuringBroadcastFailures(
 						func() error {
-							_, _, err := lockPool.AddLock(lockDir)
+							_, _, err := lockPool.AddUnclaimedLock(lockDir)
 							return err
 						}, func(expectedNumberOfInteractions int) {
-							Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(expectedNumberOfInteractions))
+							Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(expectedNumberOfInteractions))
 						})
 
 					Context("when broadcasting succeeds", func() {
 						It("returns the lockname, and a version", func() {
-							lockName, version, err := lockPool.AddLock(lockDir)
+							lockName, version, err := lockPool.AddUnclaimedLock(lockDir)
+
+							Ω(err).ShouldNot(HaveOccurred())
+							Ω(lockName).Should(Equal("some-lock"))
+							Ω(version).Should(Equal(out.Version{
+								Ref: "some-ref",
+							}))
+						})
+					})
+				})
+			})
+		})
+	})
+
+	Context("adding an initially claimed lock", func() {
+		var lockDir string
+
+		BeforeEach(func() {
+			var err error
+			lockDir, err = ioutil.TempDir("", "lock-dir")
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(lockDir)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		Context("when no files exist", func() {
+			It("returns an error", func() {
+				_, _, err := lockPool.AddClaimedLock(lockDir)
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when a name and metadata file does exist", func() {
+			BeforeEach(func() {
+				err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = ioutil.WriteFile(filepath.Join(lockDir, "metadata"), []byte("lock-contents"), 0755)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			Context("when setup fails", func() {
+				BeforeEach(func() {
+					fakeLockHandler.SetupReturns(errors.New("some-error"))
+				})
+
+				It("returns an error", func() {
+					_, _, err := lockPool.AddClaimedLock(lockDir)
+					Ω(err).Should(HaveOccurred())
+				})
+			})
+
+			Context("when setup succeeds", func() {
+				It("tries to add the lock it found in the name file", func() {
+					_, _, err := lockPool.AddClaimedLock(lockDir)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(1))
+					lockName, lockContents, initiallyClaimed := fakeLockHandler.AddLockArgsForCall(0)
+					Ω(lockName).Should(Equal("some-lock"))
+					Ω(string(lockContents)).Should(Equal("lock-contents"))
+					Ω(initiallyClaimed).Should(BeTrue())
+				})
+
+				Context("when adding the lock fails", func() {
+					BeforeEach(func() {
+						called := false
+
+						fakeLockHandler.AddLockStub = func(_ string, _ []byte, _ bool) (string, error) {
+							// succeed on second call
+							if !called {
+								called = true
+								return "", errors.New("disaster")
+							} else {
+								return "some-ref", nil
+							}
+						}
+					})
+
+					It("does not return an error as it retries", func() {
+						_, _, err := lockPool.AddClaimedLock(lockDir)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
+					})
+				})
+
+				Context("when adding the lock succeeds", func() {
+					BeforeEach(func() {
+						fakeLockHandler.AddLockReturns("some-ref", nil)
+					})
+
+					It("tries to broadcast to the lock pool", func() {
+						_, _, err := lockPool.ReleaseLock(lockDir)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(1))
+					})
+
+					ValidateSharedBehaviorDuringBroadcastFailures(
+						func() error {
+							_, _, err := lockPool.AddClaimedLock(lockDir)
+							return err
+						}, func(expectedNumberOfInteractions int) {
+							Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(expectedNumberOfInteractions))
+						})
+
+					Context("when broadcasting succeeds", func() {
+						It("returns the lockname, and a version", func() {
+							lockName, version, err := lockPool.AddClaimedLock(lockDir)
 
 							Ω(err).ShouldNot(HaveOccurred())
 							Ω(lockName).Should(Equal("some-lock"))

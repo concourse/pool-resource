@@ -627,7 +627,7 @@ func itWorksWithBranch(branchName string) {
 			})
 		})
 
-		Context("when adding a lock to the pool", func() {
+		Context("when adding an initially unclaimed lock to the pool", func() {
 			var lockToAddDir string
 			var cloneDir string
 
@@ -674,7 +674,7 @@ func itWorksWithBranch(branchName string) {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			It("adds the new lock", func() {
+			It("adds the new lock in an unclaimed state", func() {
 				clone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
 				clone.Dir = cloneDir
 				err := clone.Run()
@@ -698,12 +698,11 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding unclaimed: " + outResponse.Metadata[0].Value))
 			})
 		})
 
-
-		XContext("when adding a pre-claiming lock", func() {
+		Context("when adding an initially claimed lock to the pool", func() {
 			var lockToAddDir string
 			var cloneDir string
 
@@ -750,7 +749,7 @@ func itWorksWithBranch(branchName string) {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			It("adds the new claimed lock", func() {
+			It("adds the new lock in a claimed state", func() {
 				clone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
 				clone.Dir = cloneDir
 				err := clone.Run()
@@ -774,10 +773,9 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding and claiming: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding claimed: " + outResponse.Metadata[0].Value))
 			})
 		})
-
 
 		Context("when 2 processes are acquiring a lock at the same time", func() {
 			var sessionOne *gexec.Session

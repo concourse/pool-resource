@@ -57,7 +57,7 @@ func main() {
 
 	if request.Params.Add != "" {
 		lockPath := filepath.Join(sourceDir, request.Params.Add)
-		lock, version, err = lockPool.AddLock(lockPath)
+		lock, version, err = lockPool.AddUnclaimedLock(lockPath)
 		if err != nil {
 			fatal("adding lock", err)
 		}
@@ -65,7 +65,7 @@ func main() {
 
 	if request.Params.AddClaimed != "" {
 		lockPath := filepath.Join(sourceDir, request.Params.AddClaimed)
-		lock, version, err = lockPool.AddLock(lockPath)                   // FIXME!!!!!
+		lock, version, err = lockPool.AddClaimedLock(lockPath)
 		if err != nil {
 			fatal("adding pre-claimed lock", err)
 		}
