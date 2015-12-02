@@ -33,7 +33,7 @@ func NewLockPool(source Source, output io.Writer) LockPool {
 type LockHandler interface {
 	GrabAvailableLock() (lock string, version string, err error)
 	UnclaimLock(lock string) (version string, err error)
-	AddLock(lock string, contents []byte) (version string, err error)
+	AddLock(lock string, contents []byte, initiallyClaimed bool) (version string, err error)
 	RemoveLock(lock string) (version string, err error)
 	ClaimLock(lock string) (version string, err error)
 
@@ -133,7 +133,15 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 	}, nil
 }
 
-func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
+func (lp *LockPool) AddClaimedLock(inDir string) (string, Version, error) {
+	return lp.addLock(inDir, true)
+}
+
+func (lp *LockPool) AddUnclaimedLock(inDir string) (string, Version, error) {
+	return lp.addLock(inDir, false)
+}
+
+func (lp *LockPool) addLock(inDir string, initiallyClaimed bool) (string, Version, error) {
 	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the name file of your lock: %s", err)
@@ -145,13 +153,17 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 		return "", Version{}, fmt.Errorf("could not read the metadata file of your lock: %s", err)
 	}
 
-	fmt.Fprintf(lp.Output, "adding lock: %s to pool: %s\n", lockName, lp.Source.Pool)
+	if initiallyClaimed {
+		fmt.Fprintf(lp.Output, "adding claimed lock: %s to pool: %s\n", lockName, lp.Source.Pool)
+	} else {
+		fmt.Fprintf(lp.Output, "adding unclaimed lock: %s to pool: %s\n", lockName, lp.Source.Pool)
+	}
 
 	var ref string
 
 	err = lp.performRobustAction(func() (bool, error) {
 		var err error
-		ref, err = lp.LockHandler.AddLock(lockName, lockContents)
+		ref, err = lp.LockHandler.AddLock(lockName, lockContents, initiallyClaimed)
 
 		if err != nil {
 			fmt.Fprintf(lp.Output, "failed to add the lock: %s! (err: %s) retrying...\n", lockName, err)

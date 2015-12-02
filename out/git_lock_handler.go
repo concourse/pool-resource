@@ -111,9 +111,16 @@ func (glh *GitLockHandler) ResetLock() error {
 	return nil
 }
 
-func (glh *GitLockHandler) AddLock(lock string, contents []byte) (string, error) {
+func (glh *GitLockHandler) AddLock(lock string, contents []byte, initiallyClaimed bool) (string, error) {
+	var claimedness string
+	if initiallyClaimed {
+		claimedness = "claimed"
+	} else {
+		claimedness = "unclaimed"
+	}
+
 	pool := filepath.Join(glh.dir, glh.Source.Pool)
-	lockPath := filepath.Join(pool, "unclaimed", lock)
+	lockPath := filepath.Join(pool, claimedness, lock)
 
 	err := ioutil.WriteFile(lockPath, contents, 0555)
 	if err != nil {
@@ -125,7 +132,8 @@ func (glh *GitLockHandler) AddLock(lock string, contents []byte) (string, error)
 		return "", err
 	}
 
-	_, err = glh.git("commit", lockPath, "-m", glh.messagePrefix()+fmt.Sprintf("adding: %s", lock))
+	commitMessage := glh.messagePrefix() + fmt.Sprintf("adding %s: %s", claimedness, lock)
+	_, err = glh.git("commit", lockPath, "-m", commitMessage)
 	if err != nil {
 		return "", err
 	}

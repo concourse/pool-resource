@@ -11,7 +11,7 @@ type FakeLockHandler struct {
 	GrabAvailableLockStub        func() (lock string, version string, err error)
 	grabAvailableLockMutex       sync.RWMutex
 	grabAvailableLockArgsForCall []struct{}
-	grabAvailableLockReturns     struct {
+	grabAvailableLockReturns struct {
 		result1 string
 		result2 string
 		result3 error
@@ -25,11 +25,12 @@ type FakeLockHandler struct {
 		result1 string
 		result2 error
 	}
-	AddLockStub        func(lock string, contents []byte) (version string, err error)
+	AddLockStub        func(lock string, contents []byte, initiallyClaimed bool) (version string, err error)
 	addLockMutex       sync.RWMutex
 	addLockArgsForCall []struct {
-		lock     string
-		contents []byte
+		lock             string
+		contents         []byte
+		initiallyClaimed bool
 	}
 	addLockReturns struct {
 		result1 string
@@ -56,20 +57,20 @@ type FakeLockHandler struct {
 	SetupStub        func() error
 	setupMutex       sync.RWMutex
 	setupArgsForCall []struct{}
-	setupReturns     struct {
+	setupReturns struct {
 		result1 error
 	}
 	BroadcastLockPoolStub        func() ([]byte, error)
 	broadcastLockPoolMutex       sync.RWMutex
 	broadcastLockPoolArgsForCall []struct{}
-	broadcastLockPoolReturns     struct {
+	broadcastLockPoolReturns struct {
 		result1 []byte
 		result2 error
 	}
 	ResetLockStub        func() error
 	resetLockMutex       sync.RWMutex
 	resetLockArgsForCall []struct{}
-	resetLockReturns     struct {
+	resetLockReturns struct {
 		result1 error
 	}
 }
@@ -133,15 +134,16 @@ func (fake *FakeLockHandler) UnclaimLockReturns(result1 string, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeLockHandler) AddLock(lock string, contents []byte) (version string, err error) {
+func (fake *FakeLockHandler) AddLock(lock string, contents []byte, initiallyClaimed bool) (version string, err error) {
 	fake.addLockMutex.Lock()
 	fake.addLockArgsForCall = append(fake.addLockArgsForCall, struct {
-		lock     string
-		contents []byte
-	}{lock, contents})
+		lock             string
+		contents         []byte
+		initiallyClaimed bool
+	}{lock, contents, initiallyClaimed})
 	fake.addLockMutex.Unlock()
 	if fake.AddLockStub != nil {
-		return fake.AddLockStub(lock, contents)
+		return fake.AddLockStub(lock, contents, initiallyClaimed)
 	} else {
 		return fake.addLockReturns.result1, fake.addLockReturns.result2
 	}
@@ -153,10 +155,10 @@ func (fake *FakeLockHandler) AddLockCallCount() int {
 	return len(fake.addLockArgsForCall)
 }
 
-func (fake *FakeLockHandler) AddLockArgsForCall(i int) (string, []byte) {
+func (fake *FakeLockHandler) AddLockArgsForCall(i int) (string, []byte, bool) {
 	fake.addLockMutex.RLock()
 	defer fake.addLockMutex.RUnlock()
-	return fake.addLockArgsForCall[i].lock, fake.addLockArgsForCall[i].contents
+	return fake.addLockArgsForCall[i].lock, fake.addLockArgsForCall[i].contents, fake.addLockArgsForCall[i].initiallyClaimed
 }
 
 func (fake *FakeLockHandler) AddLockReturns(result1 string, result2 error) {

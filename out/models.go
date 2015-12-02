@@ -15,11 +15,12 @@ type Version struct {
 }
 
 type OutParams struct {
-	Release string `json:"release"`
-	Acquire bool   `json:"acquire"`
-	Add     string `json:"add"`
-	Remove  string `json:"remove"`
-	Claim   string `json:"claim"`
+	Release     string `json:"release"`
+	Acquire     bool   `json:"acquire"`
+	Add         string `json:"add"`
+	AddClaimed  string `json:"add_claimed"`
+	Remove      string `json:"remove"`
+	Claim       string `json:"claim"`
 }
 
 type OutRequest struct {

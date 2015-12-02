@@ -133,7 +133,7 @@ func itWorksWithBranch(branchName string) {
 				It("complains about it", func() {
 					errorMessages := string(session.Err.Contents())
 
-					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, claim, or add)"))
+					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, claim, add, or add_claimed)"))
 				})
 			})
 		})
@@ -627,7 +627,7 @@ func itWorksWithBranch(branchName string) {
 			})
 		})
 
-		Context("when adding a lock to the pool", func() {
+		Context("when adding an initially unclaimed lock to the pool", func() {
 			var lockToAddDir string
 			var cloneDir string
 
@@ -674,7 +674,7 @@ func itWorksWithBranch(branchName string) {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			It("adds the new lock", func() {
+			It("adds the new lock in an unclaimed state", func() {
 				clone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
 				clone.Dir = cloneDir
 				err := clone.Run()
@@ -698,7 +698,82 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding unclaimed: " + outResponse.Metadata[0].Value))
+			})
+		})
+
+		Context("when adding an initially claimed lock to the pool", func() {
+			var lockToAddDir string
+			var cloneDir string
+
+			BeforeEach(func() {
+				lockToAddDir, err := ioutil.TempDir("", "lock-to-add")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				cloneDir, err = ioutil.TempDir("", "clone")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				taskDir := filepath.Join(lockToAddDir, "task-name")
+				err = os.Mkdir(taskDir, 0755)
+
+				err = ioutil.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = ioutil.WriteFile(filepath.Join(taskDir, "name"), []byte("claimed-lock-name"), 0555)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				outRequest = out.OutRequest{
+					Source: out.Source{
+						URI:        bareGitRepo,
+						Branch:     branchName,
+						Pool:       "lock-pool",
+						RetryDelay: 100 * time.Millisecond,
+					},
+					Params: out.OutParams{
+						AddClaimed: "task-name",
+					},
+				}
+
+				session := runOut(outRequest, lockToAddDir)
+				Eventually(session).Should(gexec.Exit(0))
+
+				err = json.Unmarshal(session.Out.Contents(), &outResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := os.RemoveAll(lockToAddDir)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = os.RemoveAll(cloneDir)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("adds the new lock in a claimed state", func() {
+				clone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
+				clone.Dir = cloneDir
+				err := clone.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				lockPath := filepath.Join(cloneDir, "lock-pool", "claimed", "claimed-lock-name")
+
+				Ω(lockPath).Should(BeARegularFile())
+				contents, err := ioutil.ReadFile(lockPath)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(string(contents)).Should(Equal("hello"))
+			})
+
+			It("commits with a descriptive message", func() {
+				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding claimed: " + outResponse.Metadata[0].Value))
 			})
 		})
 
