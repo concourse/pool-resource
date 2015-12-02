@@ -126,7 +126,7 @@ func validateRequest(request out.OutRequest) {
 		request.Params.AddClaimed == "" &&
 		request.Params.Remove == "" &&
 		request.Params.Claim == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, or add)")
+		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, add, or add_claimed)")
 	}
 
 	if len(errorMessages) > 0 {
