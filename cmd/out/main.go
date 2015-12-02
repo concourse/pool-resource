@@ -63,6 +63,14 @@ func main() {
 		}
 	}
 
+	if request.Params.AddClaimed != "" {
+		lockPath := filepath.Join(sourceDir, request.Params.AddClaimed)
+		lock, version, err = lockPool.AddLock(lockPath)                   // FIXME!!!!!
+		if err != nil {
+			fatal("adding pre-claimed lock", err)
+		}
+	}
+
 	if request.Params.Remove != "" {
 		removePath := filepath.Join(sourceDir, request.Params.Remove)
 		lock, version, err = lockPool.RemoveLock(removePath)
@@ -115,6 +123,7 @@ func validateRequest(request out.OutRequest) {
 	if request.Params.Acquire == false &&
 		request.Params.Release == "" &&
 		request.Params.Add == "" &&
+		request.Params.AddClaimed == "" &&
 		request.Params.Remove == "" &&
 		request.Params.Claim == "" {
 		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, or add)")

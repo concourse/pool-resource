@@ -702,6 +702,83 @@ func itWorksWithBranch(branchName string) {
 			})
 		})
 
+
+		XContext("when adding a pre-claiming lock", func() {
+			var lockToAddDir string
+			var cloneDir string
+
+			BeforeEach(func() {
+				lockToAddDir, err := ioutil.TempDir("", "lock-to-add")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				cloneDir, err = ioutil.TempDir("", "clone")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				taskDir := filepath.Join(lockToAddDir, "task-name")
+				err = os.Mkdir(taskDir, 0755)
+
+				err = ioutil.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = ioutil.WriteFile(filepath.Join(taskDir, "name"), []byte("claimed-lock-name"), 0555)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				outRequest = out.OutRequest{
+					Source: out.Source{
+						URI:        bareGitRepo,
+						Branch:     branchName,
+						Pool:       "lock-pool",
+						RetryDelay: 100 * time.Millisecond,
+					},
+					Params: out.OutParams{
+						AddClaimed: "task-name",
+					},
+				}
+
+				session := runOut(outRequest, lockToAddDir)
+				Eventually(session).Should(gexec.Exit(0))
+
+				err = json.Unmarshal(session.Out.Contents(), &outResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				err := os.RemoveAll(lockToAddDir)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = os.RemoveAll(cloneDir)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("adds the new claimed lock", func() {
+				clone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
+				clone.Dir = cloneDir
+				err := clone.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				lockPath := filepath.Join(cloneDir, "lock-pool", "claimed", "claimed-lock-name")
+
+				Ω(lockPath).Should(BeARegularFile())
+				contents, err := ioutil.ReadFile(lockPath)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(string(contents)).Should(Equal("hello"))
+			})
+
+			It("commits with a descriptive message", func() {
+				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name #42 adding and claiming: " + outResponse.Metadata[0].Value))
+			})
+		})
+
+
 		Context("when 2 processes are acquiring a lock at the same time", func() {
 			var sessionOne *gexec.Session
 			var sessionTwo *gexec.Session
