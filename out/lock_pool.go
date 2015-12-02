@@ -33,7 +33,7 @@ func NewLockPool(source Source, output io.Writer) LockPool {
 type LockHandler interface {
 	GrabAvailableLock() (lock string, version string, err error)
 	UnclaimLock(lock string) (version string, err error)
-	AddLock(lock string, contents []byte) (version string, err error)
+	AddUnclaimedLock(lock string, contents []byte) (version string, err error)
 	RemoveLock(lock string) (version string, err error)
 	ClaimLock(lock string) (version string, err error)
 
@@ -151,7 +151,7 @@ func (lp *LockPool) AddLock(inDir string) (string, Version, error) {
 
 	err = lp.performRobustAction(func() (bool, error) {
 		var err error
-		ref, err = lp.LockHandler.AddLock(lockName, lockContents)
+		ref, err = lp.LockHandler.AddUnclaimedLock(lockName, lockContents)
 
 		if err != nil {
 			fmt.Fprintf(lp.Output, "failed to add the lock: %s! (err: %s) retrying...\n", lockName, err)

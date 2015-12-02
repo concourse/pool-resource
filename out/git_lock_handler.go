@@ -111,7 +111,7 @@ func (glh *GitLockHandler) ResetLock() error {
 	return nil
 }
 
-func (glh *GitLockHandler) AddLock(lock string, contents []byte) (string, error) {
+func (glh *GitLockHandler) AddUnclaimedLock(lock string, contents []byte) (string, error) {
 	pool := filepath.Join(glh.dir, glh.Source.Pool)
 	lockPath := filepath.Join(pool, "unclaimed", lock)
 

@@ -739,8 +739,8 @@ var _ = Describe("Lock Pool", func() {
 					_, _, err := lockPool.AddLock(lockDir)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(1))
-					lockName, lockContents := fakeLockHandler.AddLockArgsForCall(0)
+					Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(1))
+					lockName, lockContents := fakeLockHandler.AddUnclaimedLockArgsForCall(0)
 					Ω(lockName).Should(Equal("some-lock"))
 					Ω(string(lockContents)).Should(Equal("lock-contents"))
 				})
@@ -749,7 +749,7 @@ var _ = Describe("Lock Pool", func() {
 					BeforeEach(func() {
 						called := false
 
-						fakeLockHandler.AddLockStub = func(lockName string, lockContents []byte) (string, error) {
+						fakeLockHandler.AddUnclaimedLockStub = func(lockName string, lockContents []byte) (string, error) {
 							// succeed on second call
 							if !called {
 								called = true
@@ -764,13 +764,13 @@ var _ = Describe("Lock Pool", func() {
 						_, _, err := lockPool.AddLock(lockDir)
 						Ω(err).ShouldNot(HaveOccurred())
 
-						Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
+						Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(2))
 					})
 				})
 
 				Context("when adding the lock succeeds", func() {
 					BeforeEach(func() {
-						fakeLockHandler.AddLockReturns("some-ref", nil)
+						fakeLockHandler.AddUnclaimedLockReturns("some-ref", nil)
 					})
 
 					It("tries to broadcast to the lock pool", func() {
@@ -803,7 +803,7 @@ var _ = Describe("Lock Pool", func() {
 								// no logging for expected errors
 								Ω(output).ShouldNot(gbytes.Say("err"))
 
-								Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(2))
 								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
 							})
 						})
@@ -830,7 +830,7 @@ var _ = Describe("Lock Pool", func() {
 								// no logging for expected errors
 								Ω(output).Should(gbytes.Say("err"))
 
-								Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(2))
+								Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(2))
 								Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(2))
 							})
 
@@ -846,7 +846,7 @@ var _ = Describe("Lock Pool", func() {
 									Ω(output).Should(gbytes.Say("some git message"))
 
 									Ω(fakeLockHandler.ResetLockCallCount()).Should(Equal(5))
-									Ω(fakeLockHandler.AddLockCallCount()).Should(Equal(5))
+									Ω(fakeLockHandler.AddUnclaimedLockCallCount()).Should(Equal(5))
 									Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(5))
 								})
 							})
