@@ -107,7 +107,8 @@ One of the following is required.
   which should contain the name of your new lock and the contents you would like
   in the lock, respectively.
 
-* `add_claimed`: Exactly the same as the `add` param, but adds a lock to the pool in the *claimed* state. 
+* `add_claimed`: Exactly the same as the `add` param, but adds a lock to the
+  pool in the *claimed* state. 
 
 * `remove`: If set, we will remove the given lock from the pool. The value is
   the same as `release`. This can be used for e.g. tearing down an environment,
