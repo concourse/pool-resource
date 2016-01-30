@@ -4,8 +4,11 @@ platform: linux
 image: docker:///concourse/pool-resource-test
 
 inputs:
-  - name: pool-resource
-    path: gopath/src/github.com/concourse/pool-resource
+- name: pool-resource
+  path: gopath/src/github.com/concourse/pool-resource
+
+outputs:
+- name: built-resource
 
 run:
   path: gopath/src/github.com/concourse/pool-resource/ci/build
