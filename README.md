@@ -59,7 +59,11 @@ This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
     ```
 
 * `retry_delay`: *Optional.* If specified, dictates how long to wait until
-  retrying to acquire a lock or release a lock. The default is 10 seconds.
+  retrying to acquire a lock or release a lock in nanoseconds. The default is 10 seconds.
+   Example:
+   ```
+   retry_delay: 60000000000 # Retry after one minute
+   ```
 
 
 ## Behavior
