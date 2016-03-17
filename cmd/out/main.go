@@ -26,8 +26,15 @@ func main() {
 	if err != nil {
 		fatal("reading request", err)
 	}
+	defer os.Stdin.Close()
 
-	validateRequest(request)
+	errorMessages := request.Validate()
+	if len(errorMessages) > 0 {
+		for _, errorMessage := range errorMessages {
+			println(errorMessage)
+		}
+		os.Exit(1)
+	}
 
 	if request.Source.RetryDelay == 0 {
 		request.Source.RetryDelay = 10 * time.Second
@@ -103,36 +110,4 @@ func main() {
 func fatal(doing string, err error) {
 	println("error " + doing + ": " + err.Error())
 	os.Exit(1)
-}
-
-func validateRequest(request out.OutRequest) {
-	var errorMessages []string
-
-	if request.Source.URI == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing uri)")
-	}
-
-	if request.Source.Pool == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing pool)")
-	}
-
-	if request.Source.Branch == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing branch)")
-	}
-
-	if request.Params.Acquire == false &&
-		request.Params.Release == "" &&
-		request.Params.Add == "" &&
-		request.Params.AddClaimed == "" &&
-		request.Params.Remove == "" &&
-		request.Params.Claim == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, add, or add_claimed)")
-	}
-
-	if len(errorMessages) > 0 {
-		for _, errorMessage := range errorMessages {
-			println(errorMessage)
-		}
-		os.Exit(1)
-	}
 }
