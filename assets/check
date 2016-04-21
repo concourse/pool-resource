@@ -58,8 +58,16 @@ fi
 
 {
   if [ -n "$ref" ] && git cat-file -e "$ref"; then
-    git log --reverse ${ref}..HEAD --pretty='format:%H' -- $pool_name
+    init_commit=$(git rev-list --max-parents=0 HEAD)
+    if [ "${ref}" = "${init_commit}" ]; then
+      log_range="--reverse HEAD"
+    else
+      log_range="--reverse ${ref}~1..HEAD"
+    fi
   else
-    git log -1 --pretty='format:%H' -- $pool_name
+    log_range="-1"
   fi
+
+  git log $log_range --pretty='format:%H' -- $pool_name
+
  } | jq -R '.' | jq -s "map({ref: .})" >&3

@@ -19,7 +19,7 @@ it_can_check_from_a_ref() {
   local ref2=$(make_commit_to_file $repo my_pool/unclaimed/file-b)
   local ref3=$(make_commit_to_file $repo my_pool/unclaimed/file-c)
 
-  check_uri_from $repo $ref1 | jq -e "
+  check_uri_from $repo $ref2 | jq -e "
     . == [
       {ref: $(echo $ref2 | jq -R .)},
       {ref: $(echo $ref3 | jq -R .)}
@@ -54,12 +54,15 @@ it_checks_given_pool() {
   local ref4=$(make_commit_to_file $repo my_other_pool/unclaimed/file-d)
 
   check_uri_from_paths $repo $ref1 "my_pool" | jq -e "
-    . == [{ref: $(echo $ref3 | jq -R .)}]
+    . == [
+      {ref: $(echo $ref1 | jq -R .)},
+      {ref: $(echo $ref3 | jq -R .)}
+    ]
   "
 
   local ref5=$(make_commit_to_file $repo my_pool/unclaimed/file-e)
 
-  check_uri_from_paths $repo $ref1 "my_pool" | jq -e "
+  check_uri_from_paths $repo $ref3 "my_pool" | jq -e "
     . == [
       {ref: $(echo $ref3 | jq -R .)},
       {ref: $(echo $ref5 | jq -R .)}
