@@ -67,8 +67,7 @@ This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
 
 ### `check`: Check for changes to the pool.
 
-The repository is cloned (or pulled if already present), and any commits made
-after the given version for the specified pool are returned. If no version is
+The repository is cloned (or pulled if already present), and any commits made to the specified pool from the given version on are returned. If no version is
 given, the ref for `HEAD` is returned.
 
 
