@@ -10,5 +10,6 @@ exec 1>&2 # redirect all output to stderr for logging
 payload=$(mktemp $TMPDIR/pool-resource-request.XXXXXX)
 cat > $payload <&0
 load_pubkey $payload
+configure_credentials $payload
 
 /opt/go/out $1 >&3 < $payload

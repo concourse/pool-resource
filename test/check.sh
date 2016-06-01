@@ -101,9 +101,24 @@ it_can_check_when_not_ff() {
   "
 }
 
+it_can_check_with_credentials() {
+  local repo=$(init_repo)
+  local ref=$(make_commit_to_file $repo my_pool/unclaimed/file-a)
+
+  check_uri_with_credentials $repo "user1" "pass1" | jq -e "
+    . == [{ref: $(echo $ref | jq -R .)}]
+  "
+
+  # only check that the expected credential helper is set
+  # because it is not easily possible to simulate a git http backend that needs credentials
+  local expected_netrc="default login user1 password pass1"
+  [ "$(cat $HOME/.netrc)" = "$expected_netrc" ]
+}
+
 
 run it_can_check_from_head
 run it_can_check_from_a_ref
 run it_can_check_from_a_bogus_sha
 run it_checks_given_pool
 run it_can_check_when_not_ff
+run it_can_check_with_credentials

@@ -21,3 +21,12 @@ EOF
     chmod 0600 ~/.ssh/config
   fi
 }
+
+configure_credentials() {
+  local username=$(jq -r '.source.username // ""' < $1)
+  local password=$(jq -r '.source.password // ""' < $1)
+
+  if [ "$username" != "" -a "$password" != "" ]; then
+    echo "default login $username password $password" > $HOME/.netrc
+  fi
+}
