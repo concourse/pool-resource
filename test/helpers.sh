@@ -162,3 +162,15 @@ check_uri_from_paths() {
     }
   }" | ${resource_dir}/check | tee /dev/stderr
 }
+
+check_uri_with_credentials() {
+  jq -n "{
+    source: {
+      uri: $(echo $1 | jq -R .),
+      branch: \"master\",
+      pool: \"my_pool\",
+      username: $(echo $2 | jq -R .),
+      password: $(echo $3 | jq -R .)
+    }
+  }" | ${resource_dir}/check | tee /dev/stderr
+}

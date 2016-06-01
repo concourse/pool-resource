@@ -4,12 +4,12 @@
 set -e -u -x
 
 export TMPDIR=/tmp
-export GOPATH=$PWD/gopath
+#export GOPATH=$PWD/gopath
 export PATH=$GOPATH/bin:$PATH
 
 BUILD_DIR=$PWD/built-resource
 
-cd $GOPATH/src/github.com/concourse/pool-resource
+#cd $GOPATH/src/github.com/concourse/pool-resource
 
 export GOPATH=${PWD}/Godeps/_workspace:$GOPATH
 export PATH=${PWD}/Godeps/_workspace/bin:$PATH

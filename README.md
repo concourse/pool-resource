@@ -58,6 +58,11 @@ This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
       -----END RSA PRIVATE KEY-----
     ```
 
+* `username`: *Optional.* Username for HTTP(S) auth when pulling/pushing.
+  This is needed when only HTTP/HTTPS protocol for git is available (which does not support private key auth) and auth is required.
+
+* `password`: *Optional.* Password for HTTP(S) auth when pulling/pushing.
+
 * `retry_delay`: *Optional.* If specified, dictates how long to wait until
   retrying to acquire a lock or release a lock. The default is 10 seconds.
   Valid values: `60s`, `90m`, `1h`.
