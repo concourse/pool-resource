@@ -38,6 +38,11 @@ This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
 `vsphere`. The `.gitkeep` files are required to keep the `unclaimed` and
 `claimed` directories track-able by Git if there are no files in them.
 
+You will need to mirror this structure in your own lock repository. In other words, initialize an empty repository
+and create one directory in the root of the repository for each pool of locks (e.g. `aws`).  Inside of each lock pool directory, create one directory
+named `claimed` and one directory named `unclaimed`. Inside each `claimed` and `unclaimed` directory, create an empty
+filed named `.gitkeep`. Finally, create individual locks by making an empty file inside of the `unclaimed` directory
+(assuming you want your lock to be unclaimed by default) with the desired name of the lock (e.g. `env-1`).
 
 ## Source Configuration
 
@@ -47,7 +52,7 @@ This structure represents 3 pools of locks, `aws`, `ping-pong-tables`, and
 
 * `pool`: *Required.* The logical name of your pool of things to lock.
 
-* `private_key`: *Optional.* Private key to use when pulling/pushing.
+* `private_key`: *Optional.* Private key to use when pulling/pushing. Ensure it does not require a password.
     Example:
     ```
     private_key: |
@@ -106,6 +111,10 @@ One of the following is required.
   unclaimed. The value is the path of the lock to release (a directory
   containing `name` and `metadata`), which typically is just the step that
   provided the lock (either a `get` to pass one along or a `put` to acquire).
+
+  Note: the lock must be available in your job before you can release it. In
+  other words, a `get` step to fetch metadata about the lock is necessary
+  before a `put` step can release the lock.
 
 * `add`: If set, we will add a new lock to the pool in the unclaimed state. The
   value is the path to a directory containing the files `name` and `metadata`
