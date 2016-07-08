@@ -244,54 +244,7 @@ var _ = Describe("In", func() {
 					})
 				})
 			})
-			Context("when the given commit claimed the lock and the file was modified in place afterwards", func() {
-				BeforeEach(func() {
-					var err error
-					gitVersion := exec.Command("git", "rev-parse", "HEAD")
-					gitVersion.Dir = gitRepo
-					sha, err := gitVersion.Output()
-					Ω(err).ShouldNot(HaveOccurred())
-					shaStr = strings.TrimSpace(string(sha))
 
-					changeFile := exec.Command("bash", "-e", "-c", `
-					echo "additional_key: additional_value" >> lock-pool/claimed/some-lock
-					  git add lock-pool/claimed/some-lock
-					  git commit -m 'changing: some-lock'
-					`)
-					changeFile.Dir = gitRepo
-
-					err = changeFile.Run()
-					Ω(err).ShouldNot(HaveOccurred())
-				})
-
-				It("returns successfully", func() {
-					jsonIn := fmt.Sprintf(`
-						{
-							"source": {
-								"uri": "%s",
-								"branch": "master",
-								"pool": "lock-pool"
-							},
-							"version": {
-								"ref": "%s"
-							}
-						}`, gitRepo, shaStr)
-
-					session := runIn(jsonIn, inDestination, 0)
-
-					err := json.Unmarshal(session.Out.Contents(), &output)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(output).Should(Equal(inResponse{
-						Version: version{
-							Ref: shaStr,
-						},
-						Metadata: []metadataPair{
-							{Name: "lock_name", Value: "some-lock"},
-							{Name: "pool_name", Value: "lock-pool"},
-						},
-					}))
-				})
-			})
 			Context("when the commit itself unclaimed the lock", func() {
 				var shaStr string
 				BeforeEach(func() {
