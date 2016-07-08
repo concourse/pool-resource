@@ -203,7 +203,7 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name `#42` claiming: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 claiming: " + outResponse.Metadata[0].Value))
 			})
 		})
 
@@ -341,7 +341,7 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name `#42` claiming: some-lock"))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 claiming: some-lock"))
 			})
 
 			Context("when the specific lock has already been claimed", func() {
@@ -504,7 +504,7 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name `#42` removing: " + outRemoveResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 removing: " + outRemoveResponse.Metadata[0].Value))
 			})
 		})
 
@@ -623,7 +623,7 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name `#42` unclaiming: " + outReleaseResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 unclaiming: " + outReleaseResponse.Metadata[0].Value))
 			})
 		})
 
@@ -698,7 +698,7 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name `#42` adding unclaimed: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 adding unclaimed: " + outResponse.Metadata[0].Value))
 			})
 		})
 
@@ -773,7 +773,7 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("pipeline-name/job-name `#42` adding claimed: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 adding claimed: " + outResponse.Metadata[0].Value))
 			})
 		})
 
