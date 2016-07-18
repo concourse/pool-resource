@@ -63,7 +63,8 @@ func runIn(inJson string, destination string, expectedExitCode int) *gexec.Sessi
 
 	Ω(err).ShouldNot(HaveOccurred())
 
-	Eventually(session).Should(gexec.Exit(expectedExitCode))
+	<-session.Exited
+	Expect(session.ExitCode()).To(Equal(expectedExitCode))
 
 	return session
 }

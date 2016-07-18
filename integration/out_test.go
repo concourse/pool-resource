@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -86,7 +85,8 @@ func itWorksWithBranch(branchName string) {
 
 			JustBeforeEach(func() {
 				session = runOut(outRequest, sourceDir)
-				Eventually(session).Should(gexec.Exit(1))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(1))
 			})
 
 			Context("when the uri isn't set", func() {
@@ -153,7 +153,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session := runOut(outRequest, sourceDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err := json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -269,7 +270,8 @@ func itWorksWithBranch(branchName string) {
 				err := releaseLock.Run()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(session, 2*time.Second).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err = json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -301,7 +303,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session := runOut(outRequest, sourceDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err := json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -379,7 +382,8 @@ func itWorksWithBranch(branchName string) {
 					err := unclaimLock.Run()
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Eventually(claimSession).Should(gexec.Exit(0))
+					<-claimSession.Exited
+					Expect(claimSession.ExitCode()).To(Equal(0))
 				})
 			})
 		})
@@ -403,7 +407,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session = runOut(outRequest, sourceDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err := json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -445,7 +450,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session := runOut(outRemoveRequest, myLocksGetDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err = json.Unmarshal(session.Out.Contents(), &outRemoveResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -526,7 +532,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session := runOut(outRequest, sourceDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err := json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -564,7 +571,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session := runOut(outReleaseRequest, myLocksGetDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err = json.Unmarshal(session.Out.Contents(), &outReleaseResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -660,7 +668,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session := runOut(outRequest, lockToAddDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err = json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -735,7 +744,8 @@ func itWorksWithBranch(branchName string) {
 				}
 
 				session := runOut(outRequest, lockToAddDir)
-				Eventually(session).Should(gexec.Exit(0))
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
 
 				err = json.Unmarshal(session.Out.Contents(), &outResponse)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -786,7 +796,7 @@ func itWorksWithBranch(branchName string) {
 			var sessionTwoDir string
 			var claimLockDir string
 
-			var exitedCounter uint64
+			var exited <-chan struct{}
 
 			BeforeEach(func() {
 				var err error
@@ -827,7 +837,7 @@ func itWorksWithBranch(branchName string) {
 				gitServerSession, err = gexec.Start(gitServerCommand, GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(gitServerSession.Err).Should(gbytes.Say("Ready to rumble"))
+				<-gitServerSession.Err.Detect("Ready to rumble")
 			})
 
 			AfterEach(func() {
@@ -848,7 +858,8 @@ func itWorksWithBranch(branchName string) {
 				oneReady := make(chan struct{})
 				twoReady := make(chan struct{})
 
-				exitedCounter = 0
+				e := make(chan struct{})
+				exited = e
 
 				go func() {
 					defer GinkgoRecover()
@@ -858,9 +869,7 @@ func itWorksWithBranch(branchName string) {
 					sessionOne = runOut(outRequest, sessionOneDir)
 					close(oneReady)
 
-					sessionOne.Wait(10 * time.Second)
-
-					atomic.AddUint64(&exitedCounter, 1)
+					e <- <-sessionOne.Exited
 				}()
 
 				go func() {
@@ -871,9 +880,7 @@ func itWorksWithBranch(branchName string) {
 					sessionTwo = runOut(outRequest, sessionTwoDir)
 					close(twoReady)
 
-					sessionTwo.Wait(10 * time.Second)
-
-					atomic.AddUint64(&exitedCounter, 1)
+					e <- <-sessionTwo.Exited
 				}()
 
 				close(trigger)
@@ -883,11 +890,9 @@ func itWorksWithBranch(branchName string) {
 			})
 
 			Context("when another lock is acquired in the same pool at the same time", func() {
-
 				It("does not output an error message", func() {
-					Eventually(func() uint64 {
-						return atomic.LoadUint64(&exitedCounter)
-					}, 5*time.Second).Should(Equal(uint64(2)))
+					<-exited
+					<-exited
 
 					sessionOne.Terminate().Wait()
 					sessionTwo.Terminate().Wait()
@@ -922,12 +927,8 @@ func itWorksWithBranch(branchName string) {
 				})
 
 				It("does not acquire the same lock", func() {
-					Eventually(func() uint64 {
-						return atomic.LoadUint64(&exitedCounter)
-					}, 5*time.Second).Should(Equal(uint64(1)))
-					Consistently(func() uint64 {
-						return atomic.LoadUint64(&exitedCounter)
-					}, 2*time.Second).Should(Equal(uint64(1)))
+					<-exited
+					Consistently(exited, 2*time.Second).ShouldNot(Receive())
 
 					sessionOne.Terminate().Wait()
 					sessionTwo.Terminate().Wait()
