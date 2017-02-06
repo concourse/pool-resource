@@ -133,7 +133,9 @@ One of the following is required.
 ## Example Concourse Configuration
 
 The following example pipeline models acquiring, passing through, and releasing
-a lock based on the example git repository structure:
+a lock based on the example git repository structure. Note that the locks are
+released in an `ensure` step so the locks will be released even if the task fails
+or gets aborted:
 
 ```
 resources:
@@ -164,8 +166,9 @@ jobs:
       passed: [deploy-aws]
     - task: test-aws
       file: my-scripts/test-aws.yml
-    - put: aws-environments
-      params: {release: aws-environments}
+      ensure:
+        put: aws-environments
+        params: {release: aws-environments}
 ```
 
 
@@ -187,8 +190,10 @@ of the same pool), you would put that name instead. For example:
       params: {acquire: true}
     - task: test-multi-aws
       file: my-scripts/test-multi-aws.yml
-    - put: aws-environments
-      params: {release: environment-1}
-    - put: aws-environments
-      params: {release: environment-2}
+      ensure:
+        do:
+        - put: aws-environments
+          params: {release: environment-1}
+        - put: aws-environments
+          params: {release: environment-2}
 ```
