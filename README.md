@@ -133,7 +133,7 @@ One of the following is required.
 ## Example Concourse Configuration
 
 The following example pipeline models acquiring, passing through, and releasing
-a lock based on the example git repository structure:
+a lock based on the example git repository structure (this sample does not include a `private_key` key-value pair in the `source` configuration; however, when you create your pipeline, you will want to include one to avoid an `error acquiring lock: exit status 128` pipeline failure):
 
 ```
 resources:
