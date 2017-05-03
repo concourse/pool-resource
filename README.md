@@ -197,4 +197,4 @@ of the same pool), you would put that name instead. For example:
 
 ## Dependency vendoring
 
-All dependencies have been vendored via (gvt)[https://github.com/FiloSottile/gvt]
+All dependencies have been vendored via [gvt](https://github.com/FiloSottile/gvt)
