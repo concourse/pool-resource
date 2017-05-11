@@ -3,8 +3,7 @@ platform: linux
 
 image_resource:
   type: docker-image
-  source:
-    repository: concourse/pool-resource-test
+  source: {repository: golang, tag: "1"}
 
 inputs:
 - name: pool-resource

@@ -14,5 +14,5 @@ pushd ${GOPATH}/src/github.com/concourse/pool-resource > /dev/null
   CGO_ENABLED=1 ginkgo -race -r -p "$@"
 
   cp -a test/ assets/ Dockerfile ${BUILD_DIR}
-  go build -o ${BUILD_DIR}/built-out ./cmd/out
+  CGO_ENABLED=0 go build -o ${BUILD_DIR}/built-out ./cmd/out
 popd > /dev/null
