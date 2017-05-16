@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/concourse/pool-resource/out"
+
 	"github.com/onsi/gomega/gexec"
 
 	"testing"
@@ -22,17 +23,23 @@ func TestIntegration(t *testing.T) {
 	RunSpecs(t, "Integration Suite")
 }
 
-var outPath string
-var inPath string
+var (
+	outPath    string
+	inPath     string
+	builtCheck string
+)
 
 var _ = BeforeSuite(func() {
 	var err error
 
 	outPath, err = gexec.Build("github.com/concourse/pool-resource/cmd/out")
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
+
+	builtCheck, err = gexec.Build("github.com/concourse/pool-resource/cmd/check")
+	Expect(err).NotTo(HaveOccurred())
 
 	pwd, err := os.Getwd()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	inPath = filepath.Join(pwd, "../assets/in")
 })
 
@@ -54,15 +61,15 @@ func runIn(inJson string, destination string, expectedExitCode int) *gexec.Sessi
 	inCmd := exec.Command(inPath, destination)
 
 	stdin, err := inCmd.StdinPipe()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	session, err := gexec.Start(inCmd, GinkgoWriter, GinkgoWriter)
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	stdin.Write([]byte(inJson))
 	stdin.Close()
 
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	<-session.Exited
 	Expect(session.ExitCode()).To(Equal(expectedExitCode))
@@ -82,10 +89,10 @@ func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 	)
 
 	stdin, err := outCmd.StdinPipe()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	session, err := gexec.Start(outCmd, GinkgoWriter, GinkgoWriter)
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	json.NewEncoder(stdin).Encode(request)
 	stdin.Close()
@@ -124,24 +131,24 @@ func setupGitRepo(dir string) {
 	gitSetup.Stdout = GinkgoWriter
 
 	err := gitSetup.Run()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 }
 
 func getVersion(gitURI string, ref string) out.Version {
 	gitVersionRepo, err := ioutil.TempDir("", "git-version-repo")
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	defer os.RemoveAll(gitVersionRepo)
 
 	gitSetup := exec.Command("git", "clone", gitURI, ".")
 	gitSetup.Dir = gitVersionRepo
 	err = gitSetup.Run()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	gitVersion := exec.Command("git", "rev-parse", ref)
 	gitVersion.Dir = gitVersionRepo
 	sha, err := gitVersion.Output()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return out.Version{
 		Ref: strings.TrimSpace(string(sha)),
