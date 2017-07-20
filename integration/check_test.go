@@ -18,24 +18,44 @@ import (
 const simpleRequest = `
 {
 	"source": {
-	"uri": "%s",
+	"uri": "file://%s",
 	"branch": "master",
 	"pool": "lock-pool"
 	}
 }`
 
+const versionRequest = `
+{
+	"source": {
+	"uri": "file://%s",
+	"branch": "master",
+	"pool": "lock-pool"
+	},
+	"version": {"ref": %q}
+}`
+
+const poolRequest = `
+{
+	"source": {
+	"uri": "file://%s",
+	"branch": "master",
+	"pool": %q
+	},
+	"version": {"ref": %q}
+}`
+
 type locksResponse map[string]string
 
 var _ = Describe("Check", func() {
-	var (
-		gitRepo string
-	)
+	var gitRepo string
 
 	BeforeEach(func() {
 		var err error
 
 		gitRepo, err = ioutil.TempDir("", "git-repo")
 		Expect(err).NotTo(HaveOccurred())
+
+		setupGitRepo(gitRepo)
 	})
 
 	AfterEach(func() {
@@ -44,9 +64,7 @@ var _ = Describe("Check", func() {
 	})
 
 	Context("when the repo is at HEAD", func() {
-		FIt("succesfully checks", func() {
-			setupGitRepo(gitRepo)
-
+		It("succesfully checks", func() {
 			cmd := exec.Command(builtCheck)
 			cmd.Stdin = bytes.NewBufferString(fmt.Sprintf(simpleRequest, gitRepo))
 
@@ -70,17 +88,59 @@ var _ = Describe("Check", func() {
 			sha := strings.TrimSpace(string(shaStr))
 
 			Expect(result).To(HaveLen(1))
-			Expect(result[0]["version"]).To(Equal(sha))
+			Expect(result[0]["ref"]).To(Equal(sha))
 		})
 	})
 
 	Context("when the repo is at a particular ref", func() {
 		It("succesfully checks", func() {
+			addLockCommit(gitRepo)
+			refTwo := addLockCommit(gitRepo)
+			refThree := addLockCommit(gitRepo)
+
+			checkData := fmt.Sprintf(versionRequest, gitRepo, refTwo)
+			cmd := exec.Command(builtCheck)
+			cmd.Stdin = bytes.NewBufferString(checkData)
+
+			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			<-session.Exited
+
+			Expect(session.ExitCode()).To(Equal(0))
+
+			var result []locksResponse
+			err = json.NewDecoder(bytes.NewReader(session.Out.Contents())).Decode(&result)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(result).To(HaveLen(2))
+			Expect(result[0]["ref"]).To(Equal(refTwo))
+			Expect(result[1]["ref"]).To(Equal(refThree))
 		})
 	})
 
 	Context("when provided a bogus SHA", func() {
 		It("succesfully checks", func() {
+			addLockCommit(gitRepo)
+			lastRef := addLockCommit(gitRepo)
+
+			checkData := fmt.Sprintf(versionRequest, gitRepo, "bogus reference")
+			cmd := exec.Command(builtCheck)
+			cmd.Stdin = bytes.NewBufferString(checkData)
+
+			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			<-session.Exited
+
+			Expect(session.ExitCode()).To(Equal(0))
+
+			var result []locksResponse
+			err = json.NewDecoder(bytes.NewReader(session.Out.Contents())).Decode(&result)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0]["ref"]).To(Equal(lastRef))
 		})
 	})
 
