@@ -2,11 +2,14 @@ package integration_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,6 +19,9 @@ import (
 	"github.com/onsi/gomega/gexec"
 
 	"testing"
+
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 func TestIntegration(t *testing.T) {
@@ -101,30 +107,33 @@ func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 }
 
 func setupGitRepo(dir string) {
-	gitSetup := exec.Command("bash", "-e", "-c", `
-	  git init
+	setupGitRepoWithPool(dir, "lock-pool")
+}
+
+func setupGitRepoWithPool(dir, pool string) {
+	gitSetup := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
+	    git init
 
 		git config user.email "ginkgo@localhost"
 		git config user.name "Ginkgo Local"
 
+		mkdir -p %[1]s/unclaimed
+		mkdir -p %[1]s/claimed
 
-		mkdir -p lock-pool/unclaimed
-		mkdir -p lock-pool/claimed
+		touch %[1]s/unclaimed/.gitkeep
+		touch %[1]s/claimed/.gitkeep
 
-		touch lock-pool/unclaimed/.gitkeep
-		touch lock-pool/claimed/.gitkeep
+		touch %[1]s/unclaimed/some-lock
+		touch %[1]s/unclaimed/some-other-lock
 
-		touch lock-pool/unclaimed/some-lock
-		touch lock-pool/unclaimed/some-other-lock
-
-		echo '{"some":"json"}' > lock-pool/unclaimed/some-lock
-		echo '{"some":"wrong-json"}' > lock-pool/unclaimed/some-other-lock
+		echo '{"some":"json"}' > %[1]s/unclaimed/some-lock
+		echo '{"some":"wrong-json"}' > %[1]s/unclaimed/some-other-lock
 
 		git add .
 		git commit -m 'test-git-setup'
 		git checkout -b another-branch
 		git checkout master
-	`)
+	`, pool))
 	gitSetup.Dir = dir
 
 	gitSetup.Stderr = GinkgoWriter
@@ -132,6 +141,42 @@ func setupGitRepo(dir string) {
 
 	err := gitSetup.Run()
 	Expect(err).NotTo(HaveOccurred())
+}
+
+func addLockCommit(repoDir string) string {
+	return addLockCommitWithPool(repoDir, "lock-pool")
+}
+
+func addLockCommitWithPool(repoDir, pool string) string {
+	r, err := git.PlainOpen(repoDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	w, err := r.Worktree()
+	Expect(err).NotTo(HaveOccurred())
+
+	lockFileName := fmt.Sprintf("%s-lock", randString())
+
+	lockFilePath := filepath.Join(pool, "unclaimed", lockFileName)
+
+	err = ioutil.WriteFile(filepath.Join(repoDir, lockFilePath), []byte("hello world"), 777)
+	Expect(err).NotTo(HaveOccurred())
+
+	_, err = w.Add(lockFilePath)
+	Expect(err).NotTo(HaveOccurred())
+
+	commit, err := w.Commit("another lock added", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Ginkgo Local",
+			Email: "ginkgo@localhost",
+			When:  time.Now(),
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	obj, err := r.CommitObject(commit)
+	Expect(err).NotTo(HaveOccurred())
+
+	return fmt.Sprint(obj.Hash)
 }
 
 func getVersion(gitURI string, ref string) out.Version {
@@ -153,4 +198,18 @@ func getVersion(gitURI string, ref string) out.Version {
 	return out.Version{
 		Ref: strings.TrimSpace(string(sha)),
 	}
+}
+
+func randString() string {
+	rand.Seed(time.Now().UnixNano())
+
+	alpha := []rune("abcdefghijklmnopqrstuvwxyz")
+
+	final := make([]rune, 10)
+
+	for i := range final {
+		final[i] = alpha[rand.Intn(len(alpha))]
+	}
+
+	return string(final)
 }
