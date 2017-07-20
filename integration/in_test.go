@@ -58,6 +58,7 @@ var _ = Describe("In", func() {
 			var err error
 
 			setupGitRepo(gitRepo)
+			addLockToPool(gitRepo, "lock-pool", "some-lock")
 
 			claimLock := exec.Command("bash", "-e", "-c", `
 				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
@@ -112,6 +113,7 @@ var _ = Describe("In", func() {
 			var err error
 
 			setupGitRepo(gitRepo)
+			addLockToPool(gitRepo, "lock-pool", "some-lock")
 
 			claimLock := exec.Command("bash", "-e", "-c", `
 				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock

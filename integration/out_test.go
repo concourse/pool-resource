@@ -19,7 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Out", func() {
+var _ = FDescribe("Out", func() {
 
 	itWorksWithBranch("master")
 	itWorksWithBranch("another-branch")
@@ -46,6 +46,8 @@ func itWorksWithBranch(branchName string) {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			setupGitRepo(gitRepo)
+			addLockToPool(gitRepo, "lock-pool", "some-lock", branch "master")
+			addLockToPool(gitRepo, "lock-pool", "some-lock", branch "another-branch")
 
 			bareGitSetup := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
 			git clone %s --bare .
@@ -161,7 +163,7 @@ func itWorksWithBranch(branchName string) {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("moves a lock to claimed", func() {
+			FIt("moves a lock to claimed", func() {
 				version := getVersion(bareGitRepo, "origin/"+branchName)
 
 				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")

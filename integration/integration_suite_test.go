@@ -111,54 +111,64 @@ func setupGitRepo(dir string) {
 }
 
 func setupGitRepoWithPool(dir, pool string) {
-	gitSetup := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
-	    git init
-
-		git config user.email "ginkgo@localhost"
-		git config user.name "Ginkgo Local"
-
-		mkdir -p %[1]s/unclaimed
-		mkdir -p %[1]s/claimed
-
-		touch %[1]s/unclaimed/.gitkeep
-		touch %[1]s/claimed/.gitkeep
-
-		touch %[1]s/unclaimed/some-lock
-		touch %[1]s/unclaimed/some-other-lock
-
-		echo '{"some":"json"}' > %[1]s/unclaimed/some-lock
-		echo '{"some":"wrong-json"}' > %[1]s/unclaimed/some-other-lock
-
-		git add .
-		git commit -m 'test-git-setup'
-		git checkout -b another-branch
-		git checkout master
-	`, pool))
-	gitSetup.Dir = dir
-
-	gitSetup.Stderr = GinkgoWriter
-	gitSetup.Stdout = GinkgoWriter
-
-	err := gitSetup.Run()
+	_, err := git.PlainInit(dir, false)
 	Expect(err).NotTo(HaveOccurred())
+
+	setupPool(dir, pool)
 }
 
-func addLockCommit(repoDir string) string {
-	return addLockCommitWithPool(repoDir, "lock-pool")
-}
-
-func addLockCommitWithPool(repoDir, pool string) string {
+func setupPool(repoDir, pool string) {
 	r, err := git.PlainOpen(repoDir)
 	Expect(err).NotTo(HaveOccurred())
 
 	w, err := r.Worktree()
 	Expect(err).NotTo(HaveOccurred())
 
-	lockFileName := fmt.Sprintf("%s-lock", randString())
+	err = os.Mkdir(filepath.Join(repoDir, pool), 0777)
+	Expect(err).NotTo(HaveOccurred())
+
+	directories := []string{"unclaimed", "claimed"}
+
+	for _, directory := range directories {
+		path := filepath.Join(repoDir, pool, directory)
+		err = os.Mkdir(path, 0777)
+		Expect(err).NotTo(HaveOccurred())
+
+		gitKeepPath := filepath.Join(path, ".gitkeep")
+
+		err = ioutil.WriteFile(gitKeepPath, []byte{}, 0777)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = w.Add(filepath.Join(pool, directory, ".gitkeep"))
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	_, err = w.Commit("test-git-setup", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Ginkgo Local",
+			Email: "ginkgo@localhost",
+			When:  time.Now(),
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+}
+
+func addLockCommit(repoDir string) string {
+	return addLockToPool(repoDir, "lock-pool", fmt.Sprintf("%s-lock", randString()))
+}
+
+func addLockToPool(repoDir, pool, lockName string) string {
+	r, err := git.PlainOpen(repoDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	w, err := r.Worktree()
+	Expect(err).NotTo(HaveOccurred())
+
+	lockFileName := lockName
 
 	lockFilePath := filepath.Join(pool, "unclaimed", lockFileName)
 
-	err = ioutil.WriteFile(filepath.Join(repoDir, lockFilePath), []byte("hello world"), 777)
+	err = ioutil.WriteFile(filepath.Join(repoDir, lockFilePath), []byte(`{"some":"json"}`), 0777)
 	Expect(err).NotTo(HaveOccurred())
 
 	_, err = w.Add(lockFilePath)
