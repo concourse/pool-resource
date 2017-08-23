@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
@@ -117,6 +118,22 @@ func setupGitRepoWithPool(dir, pool string) {
 	setupPool(dir, pool)
 }
 
+func createBranch(repoDir, branchName string) {
+	r, err := git.PlainOpen(repoDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	w, err := r.Worktree()
+	Expect(err).NotTo(HaveOccurred())
+
+	if branchName != "master" {
+		err = w.Checkout(&git.CheckoutOptions{
+			Create: true,
+			Branch: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branchName)),
+		})
+		Expect(err).NotTo(HaveOccurred())
+	}
+}
+
 func setupPool(repoDir, pool string) {
 	r, err := git.PlainOpen(repoDir)
 	Expect(err).NotTo(HaveOccurred())
@@ -154,19 +171,22 @@ func setupPool(repoDir, pool string) {
 }
 
 func addLockCommit(repoDir string) string {
-	return addLockToPool(repoDir, "lock-pool", fmt.Sprintf("%s-lock", randString()))
+	return addLockToPool(repoDir, "lock-pool", fmt.Sprintf("%s-lock", randString()), "master")
 }
 
-func addLockToPool(repoDir, pool, lockName string) string {
+func addLockToPool(repoDir, pool, lockName, branchName string) string {
 	r, err := git.PlainOpen(repoDir)
 	Expect(err).NotTo(HaveOccurred())
 
 	w, err := r.Worktree()
 	Expect(err).NotTo(HaveOccurred())
 
-	lockFileName := lockName
+	err = w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branchName)),
+	})
+	Expect(err).NotTo(HaveOccurred())
 
-	lockFilePath := filepath.Join(pool, "unclaimed", lockFileName)
+	lockFilePath := filepath.Join(pool, "unclaimed", lockName)
 
 	err = ioutil.WriteFile(filepath.Join(repoDir, lockFilePath), []byte(`{"some":"json"}`), 0777)
 	Expect(err).NotTo(HaveOccurred())

@@ -19,20 +19,21 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("Out", func() {
-
+var _ = Describe("Out", func() {
 	itWorksWithBranch("master")
 	itWorksWithBranch("another-branch")
 })
 
 func itWorksWithBranch(branchName string) {
 	Context("when the branch name is "+branchName, func() {
-		var gitRepo string
-		var bareGitRepo string
-		var sourceDir string
+		var (
+			gitRepo     string
+			bareGitRepo string
+			sourceDir   string
 
-		var outResponse out.OutResponse
-		var outRequest out.OutRequest
+			outResponse out.OutResponse
+			outRequest  out.OutRequest
+		)
 
 		BeforeEach(func() {
 			var err error
@@ -46,12 +47,12 @@ func itWorksWithBranch(branchName string) {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			setupGitRepo(gitRepo)
-			addLockToPool(gitRepo, "lock-pool", "some-lock", branch "master")
-			addLockToPool(gitRepo, "lock-pool", "some-lock", branch "another-branch")
+			createBranch(gitRepo, branchName)
 
-			bareGitSetup := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
-			git clone %s --bare .
-		`, gitRepo))
+			addLockToPool(gitRepo, "lock-pool", "some-lock", branchName)
+			addLockToPool(gitRepo, "lock-pool", "some-other-lock", branchName)
+
+			bareGitSetup := exec.Command("bash", "-e", "-c", fmt.Sprintf(` git clone %s --bare .  `, gitRepo))
 			bareGitSetup.Dir = bareGitRepo
 
 			err = bareGitSetup.Run()
@@ -163,7 +164,7 @@ func itWorksWithBranch(branchName string) {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			FIt("moves a lock to claimed", func() {
+			It("moves a lock to claimed", func() {
 				version := getVersion(bareGitRepo, "origin/"+branchName)
 
 				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
