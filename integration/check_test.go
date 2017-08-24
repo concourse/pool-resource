@@ -40,8 +40,7 @@ const poolRequest = `
 	"uri": "file://%s",
 	"branch": "master",
 	"pool": %q
-	},
-	"version": {"ref": %q}
+	}
 }`
 
 type locksResponse map[string]string
@@ -65,6 +64,8 @@ var _ = Describe("Check", func() {
 
 	Context("when the repo is at HEAD", func() {
 		It("succesfully checks", func() {
+			addLockCommit(gitRepo)
+
 			cmd := exec.Command(builtCheck)
 			cmd.Stdin = bytes.NewBufferString(fmt.Sprintf(simpleRequest, gitRepo))
 
@@ -146,6 +147,27 @@ var _ = Describe("Check", func() {
 
 	Context("when given a particular pool", func() {
 		It("succesfully checks", func() {
+			setupPool(gitRepo, "other-pool")
+			ref := addLockToPool(gitRepo, "other-pool", "some-lock", "master")
+			addLockCommit(gitRepo)
+
+			checkData := fmt.Sprintf(poolRequest, gitRepo, "other-pool")
+			cmd := exec.Command(builtCheck)
+			cmd.Stdin = bytes.NewBufferString(checkData)
+
+			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			<-session.Exited
+
+			Expect(session.ExitCode()).To(Equal(0))
+
+			var result []locksResponse
+			err = json.NewDecoder(bytes.NewReader(session.Out.Contents())).Decode(&result)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(result).To(HaveLen(1))
+			Expect(result[0]["ref"]).To(Equal(ref))
 		})
 	})
 

@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"time"
 
 	"gopkg.in/src-d/go-git.v4"
-	"io"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 type checkRequest struct {
@@ -51,23 +52,22 @@ func main() {
 
 	var versions []Version
 
-	foundReference := false
+	commits, err := repo.Log(&git.LogOptions{})
+	if err != nil {
+		panic(err)
+	}
 
-	if req.Version.Ref == "" {
-		ref, err := repo.Head()
+	_, err = repo.CommitObject(plumbing.NewHash(req.Version.Ref))
+	if err == plumbing.ErrObjectNotFound {
+		head, err := repo.Head()
 		if err != nil {
 			panic(err)
 		}
 
-		versions = append(versions, Version{Ref: ref.Hash().String()})
+		versions = []Version{{Ref: head.Hash().String()}}
+	}
 
-	} else {
-		commits, err := repo.Log(&git.LogOptions{})
-		if err != nil {
-			panic(err)
-		}
-
-
+	if len(versions) == 0 {
 		for {
 			commit, err := commits.Next()
 			if err != nil {
@@ -81,13 +81,8 @@ func main() {
 			versions = append([]Version{{Ref: commit.Hash.String()}}, versions...)
 
 			if commit.Hash.String() == req.Version.Ref {
-				foundReference = true
 				break
 			}
-		}
-
-		if !foundReference {
-			versions = []Version{versions[len(versions) - 1]}
 		}
 	}
 
