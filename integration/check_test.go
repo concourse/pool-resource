@@ -43,6 +43,16 @@ const poolRequest = `
 	}
 }`
 
+const poolRequestWithRef = `
+{
+	"source": {
+	"uri": "file://%s",
+	"branch": "master",
+	"pool": %q
+	},
+	"version": {"ref": %q}
+}`
+
 type locksResponse map[string]string
 
 var _ = Describe("Check", func() {
@@ -147,27 +157,71 @@ var _ = Describe("Check", func() {
 
 	Context("when given a particular pool", func() {
 		It("succesfully checks", func() {
-			setupPool(gitRepo, "other-pool")
-			ref := addLockToPool(gitRepo, "other-pool", "some-lock", "master")
-			addLockCommit(gitRepo)
-
-			checkData := fmt.Sprintf(poolRequest, gitRepo, "other-pool")
-			cmd := exec.Command(builtCheck)
-			cmd.Stdin = bytes.NewBufferString(checkData)
-
-			session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-
-			<-session.Exited
-
-			Expect(session.ExitCode()).To(Equal(0))
-
 			var result []locksResponse
-			err = json.NewDecoder(bytes.NewReader(session.Out.Contents())).Decode(&result)
-			Expect(err).NotTo(HaveOccurred())
 
-			Expect(result).To(HaveLen(1))
-			Expect(result[0]["ref"]).To(Equal(ref))
+			setupPool(gitRepo, "other-pool")
+			refOne := addLockCommit(gitRepo)
+			refTwo := addLockToPool(gitRepo, "other-pool", "some-lock", "master")
+			refThree := addLockCommit(gitRepo)
+
+			By("checking other-pool", func() {
+				checkData := fmt.Sprintf(poolRequest, gitRepo, "other-pool")
+				cmd := exec.Command(builtCheck)
+				cmd.Stdin = bytes.NewBufferString(checkData)
+
+				session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Expect(err).NotTo(HaveOccurred())
+
+				<-session.Exited
+
+				Expect(session.ExitCode()).To(Equal(0))
+
+				err = json.NewDecoder(bytes.NewReader(session.Out.Contents())).Decode(&result)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(result).To(HaveLen(1))
+				Expect(result[0]["ref"]).To(Equal(refTwo))
+
+			})
+
+			By("checking lock-pool", func() {
+				checkData := fmt.Sprintf(poolRequest, gitRepo, "lock-pool")
+				cmd := exec.Command(builtCheck)
+				cmd.Stdin = bytes.NewBufferString(checkData)
+
+				session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Expect(err).NotTo(HaveOccurred())
+
+				<-session.Exited
+
+				Expect(session.ExitCode()).To(Equal(0))
+
+				err = json.NewDecoder(bytes.NewReader(session.Out.Contents())).Decode(&result)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(result).To(HaveLen(1))
+				Expect(result[0]["ref"]).To(Equal(refThree))
+			})
+
+			By("providing a ref", func() {
+				checkData := fmt.Sprintf(poolRequestWithRef, gitRepo, "lock-pool", refOne)
+				cmd := exec.Command(builtCheck)
+				cmd.Stdin = bytes.NewBufferString(checkData)
+
+				session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Expect(err).NotTo(HaveOccurred())
+
+				<-session.Exited
+
+				Expect(session.ExitCode()).To(Equal(0))
+
+				err = json.NewDecoder(bytes.NewReader(session.Out.Contents())).Decode(&result)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(result).To(HaveLen(2))
+				Expect(result[0]["ref"]).To(Equal(refOne))
+				Expect(result[1]["ref"]).To(Equal(refThree))
+			})
 		})
 	})
 
@@ -177,12 +231,12 @@ var _ = Describe("Check", func() {
 	})
 
 	Context("when provided with credentials", func() {
-		It("adds to the .netrc to successfully check", func() {
+		It("successfully checks", func() {
 		})
 	})
 
 	Context("when credentials no longer required", func() {
-		It("clears out the .netrc", func() {
+		It("successfully checks", func() {
 		})
 	})
 })
