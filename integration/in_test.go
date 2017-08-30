@@ -9,10 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("In", func() {
@@ -25,15 +26,15 @@ var _ = Describe("In", func() {
 		var err error
 		inDestination, err = ioutil.TempDir("", "in-destination")
 		gitRepo, err = ioutil.TempDir("", "git-repo")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		err := os.RemoveAll(inDestination)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred())
 
 		err = os.RemoveAll(gitRepo)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	Context("when the config is incomplete", func() {
@@ -46,9 +47,9 @@ var _ = Describe("In", func() {
 		It("returns all config errors", func() {
 			errorMessages := string(session.Err.Contents())
 
-			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing uri)"))
-			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing branch)"))
-			Ω(errorMessages).Should(ContainSubstring("invalid payload (missing pool)"))
+			Expect(errorMessages).Should(ContainSubstring("invalid payload (missing uri)"))
+			Expect(errorMessages).Should(ContainSubstring("invalid payload (missing branch)"))
+			Expect(errorMessages).Should(ContainSubstring("invalid payload (missing pool)"))
 		})
 	})
 
@@ -57,6 +58,7 @@ var _ = Describe("In", func() {
 			var err error
 
 			setupGitRepo(gitRepo)
+			addLockToPool(gitRepo, "lock-pool", "some-lock", "master")
 
 			claimLock := exec.Command("bash", "-e", "-c", `
 				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
@@ -68,14 +70,14 @@ var _ = Describe("In", func() {
 			claimLock.Dir = gitRepo
 
 			err = claimLock.Run()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("return succesfully", func() {
 			gitVersion := exec.Command("git", "rev-parse", "HEAD")
 			gitVersion.Dir = gitRepo
 			sha, err := gitVersion.Output()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			shaStr := strings.TrimSpace(string(sha))
 
 			jsonIn := fmt.Sprintf(`
@@ -93,8 +95,8 @@ var _ = Describe("In", func() {
 			session := runIn(jsonIn, inDestination, 0)
 
 			err = json.Unmarshal(session.Out.Contents(), &output)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(output).Should(Equal(inResponse{
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(output).Should(Equal(inResponse{
 				Version: version{
 					Ref: shaStr,
 				},
@@ -111,6 +113,7 @@ var _ = Describe("In", func() {
 			var err error
 
 			setupGitRepo(gitRepo)
+			addLockToPool(gitRepo, "lock-pool", "some-lock", "master")
 
 			claimLock := exec.Command("bash", "-e", "-c", `
 				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
@@ -119,14 +122,14 @@ var _ = Describe("In", func() {
 			claimLock.Dir = gitRepo
 
 			err = claimLock.Run()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("outputs the metadata for the environment", func() {
 			gitVersion := exec.Command("git", "rev-parse", "HEAD")
 			gitVersion.Dir = gitRepo
 			sha, err := gitVersion.Output()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			shaStr := strings.TrimSpace(string(sha))
 
 			jsonIn := fmt.Sprintf(`
@@ -144,25 +147,25 @@ var _ = Describe("In", func() {
 			session := runIn(jsonIn, inDestination, 0)
 
 			err = json.Unmarshal(session.Out.Contents(), &output)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			metaDataFile := filepath.Join(inDestination, "metadata")
-			Ω(metaDataFile).Should(BeARegularFile())
+			Expect(metaDataFile).Should(BeARegularFile())
 
 			fileContents, err := ioutil.ReadFile(metaDataFile)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
-			Ω(fileContents).Should(MatchJSON(`{"some":"json"}`))
+			Expect(fileContents).Should(MatchJSON(`{"some":"json"}`))
 
 			lockNameFile := filepath.Join(inDestination, "name")
-			Ω(lockNameFile).Should(BeARegularFile())
+			Expect(lockNameFile).Should(BeARegularFile())
 
 			fileContents, err = ioutil.ReadFile(lockNameFile)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
-			Ω(strings.TrimSpace(string(fileContents))).Should(Equal("some-lock"))
+			Expect(strings.TrimSpace(string(fileContents))).Should(Equal("some-lock"))
 
-			Ω(output).Should(Equal(inResponse{
+			Expect(output).Should(Equal(inResponse{
 				Version: version{
 					Ref: shaStr,
 				},
@@ -182,7 +185,7 @@ var _ = Describe("In", func() {
 					gitVersion := exec.Command("git", "rev-parse", "HEAD")
 					gitVersion.Dir = gitRepo
 					sha, err := gitVersion.Output()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 					shaStr = strings.TrimSpace(string(sha))
 
 					unclaimLock := exec.Command("bash", "-e", "-c", `
@@ -192,7 +195,7 @@ var _ = Describe("In", func() {
 					unclaimLock.Dir = gitRepo
 
 					err = unclaimLock.Run()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 				})
 
 				It("fails with a useful error message because the lock is no longer safe to use", func() {
@@ -210,7 +213,7 @@ var _ = Describe("In", func() {
 
 					session := runIn(jsonIn, inDestination, 1)
 
-					Ω(session.Err).Should(gbytes.Say("error: lock instance is no longer acquired"))
+					Expect(session.Err).Should(gbytes.Say("error: lock instance is no longer acquired"))
 				})
 
 				Context("when the lock is acquired again but by another pipeline run and is run", func() {
@@ -222,7 +225,7 @@ var _ = Describe("In", func() {
 						claimLock.Dir = gitRepo
 
 						err := claimLock.Run()
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ShouldNot(HaveOccurred())
 					})
 
 					It("fails with a useful error message because the lock has been acquired by another pipeline run", func() {
@@ -240,7 +243,7 @@ var _ = Describe("In", func() {
 
 						session := runIn(jsonIn, inDestination, 1)
 
-						Ω(session.Err).Should(gbytes.Say("error: lock instance is no longer acquired"))
+						Expect(session.Err).Should(gbytes.Say("error: lock instance is no longer acquired"))
 					})
 				})
 			})
@@ -257,13 +260,13 @@ var _ = Describe("In", func() {
 					unclaimLock.Dir = gitRepo
 
 					err = unclaimLock.Run()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 
 					gitVersion := exec.Command("git", "rev-parse", "HEAD")
 					gitVersion.Dir = gitRepo
 
 					sha, err := gitVersion.Output()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 					shaStr = strings.TrimSpace(string(sha))
 
 					someOtherCommit := exec.Command("bash", "-e", "-c", `
@@ -273,7 +276,7 @@ var _ = Describe("In", func() {
 					someOtherCommit.Dir = gitRepo
 
 					err = someOtherCommit.Run()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 				})
 
 				It("outputs the metadata for the environment", func() {
@@ -293,25 +296,25 @@ var _ = Describe("In", func() {
 
 					Consistently(session.Err).ShouldNot(gbytes.Say("error: lock instance is no longer acquired"))
 					err := json.Unmarshal(session.Out.Contents(), &output)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 
 					metaDataFile := filepath.Join(inDestination, "metadata")
-					Ω(metaDataFile).Should(BeARegularFile())
+					Expect(metaDataFile).Should(BeARegularFile())
 
 					fileContents, err := ioutil.ReadFile(metaDataFile)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 
-					Ω(fileContents).Should(MatchJSON(`{"some":"json"}`))
+					Expect(fileContents).Should(MatchJSON(`{"some":"json"}`))
 
 					lockNameFile := filepath.Join(inDestination, "name")
-					Ω(lockNameFile).Should(BeARegularFile())
+					Expect(lockNameFile).Should(BeARegularFile())
 
 					fileContents, err = ioutil.ReadFile(lockNameFile)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 
-					Ω(strings.TrimSpace(string(fileContents))).Should(Equal("some-lock"))
+					Expect(strings.TrimSpace(string(fileContents))).Should(Equal("some-lock"))
 
-					Ω(output).Should(Equal(inResponse{
+					Expect(output).Should(Equal(inResponse{
 						Version: version{
 							Ref: shaStr,
 						},

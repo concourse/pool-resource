@@ -2,18 +2,27 @@ package integration_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/concourse/pool-resource/out"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/concourse/pool-resource/out"
+
 	"github.com/onsi/gomega/gexec"
 
 	"testing"
+
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 func TestIntegration(t *testing.T) {
@@ -21,17 +30,23 @@ func TestIntegration(t *testing.T) {
 	RunSpecs(t, "Integration Suite")
 }
 
-var outPath string
-var inPath string
+var (
+	outPath    string
+	inPath     string
+	builtCheck string
+)
 
 var _ = BeforeSuite(func() {
 	var err error
 
 	outPath, err = gexec.Build("github.com/concourse/pool-resource/cmd/out")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
+
+	builtCheck, err = gexec.Build("github.com/concourse/pool-resource/cmd/check")
+	Expect(err).NotTo(HaveOccurred())
 
 	pwd, err := os.Getwd()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	inPath = filepath.Join(pwd, "../assets/in")
 })
 
@@ -53,15 +68,15 @@ func runIn(inJson string, destination string, expectedExitCode int) *gexec.Sessi
 	inCmd := exec.Command(inPath, destination)
 
 	stdin, err := inCmd.StdinPipe()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	session, err := gexec.Start(inCmd, GinkgoWriter, GinkgoWriter)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	stdin.Write([]byte(inJson))
 	stdin.Close()
 
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	<-session.Exited
 	Expect(session.ExitCode()).To(Equal(expectedExitCode))
@@ -81,10 +96,10 @@ func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 	)
 
 	stdin, err := outCmd.StdinPipe()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	session, err := gexec.Start(outCmd, GinkgoWriter, GinkgoWriter)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	json.NewEncoder(stdin).Encode(request)
 	stdin.Close()
@@ -93,56 +108,138 @@ func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 }
 
 func setupGitRepo(dir string) {
-	gitSetup := exec.Command("bash", "-e", "-c", `
-	  git init
+	setupGitRepoWithPool(dir, "lock-pool")
+}
 
-		git config user.email "ginkgo@localhost"
-		git config user.name "Ginkgo Local"
+func setupGitRepoWithPool(dir, pool string) {
+	_, err := git.PlainInit(dir, false)
+	Expect(err).NotTo(HaveOccurred())
 
+	setupPool(dir, pool)
+}
 
-		mkdir -p lock-pool/unclaimed
-		mkdir -p lock-pool/claimed
+func createBranch(repoDir, branchName string) {
+	r, err := git.PlainOpen(repoDir)
+	Expect(err).NotTo(HaveOccurred())
 
-		touch lock-pool/unclaimed/.gitkeep
-		touch lock-pool/claimed/.gitkeep
+	w, err := r.Worktree()
+	Expect(err).NotTo(HaveOccurred())
 
-		touch lock-pool/unclaimed/some-lock
-		touch lock-pool/unclaimed/some-other-lock
+	if branchName != "master" {
+		err = w.Checkout(&git.CheckoutOptions{
+			Create: true,
+			Branch: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branchName)),
+		})
+		Expect(err).NotTo(HaveOccurred())
+	}
+}
 
-		echo '{"some":"json"}' > lock-pool/unclaimed/some-lock
-		echo '{"some":"wrong-json"}' > lock-pool/unclaimed/some-other-lock
+func setupPool(repoDir, pool string) {
+	r, err := git.PlainOpen(repoDir)
+	Expect(err).NotTo(HaveOccurred())
 
-		git add .
-		git commit -m 'test-git-setup'
-		git checkout -b another-branch
-		git checkout master
-	`)
-	gitSetup.Dir = dir
+	w, err := r.Worktree()
+	Expect(err).NotTo(HaveOccurred())
 
-	gitSetup.Stderr = GinkgoWriter
-	gitSetup.Stdout = GinkgoWriter
+	err = os.Mkdir(filepath.Join(repoDir, pool), 0777)
+	Expect(err).NotTo(HaveOccurred())
 
-	err := gitSetup.Run()
-	Ω(err).ShouldNot(HaveOccurred())
+	directories := []string{"unclaimed", "claimed"}
+
+	for _, directory := range directories {
+		path := filepath.Join(repoDir, pool, directory)
+		err = os.Mkdir(path, 0777)
+		Expect(err).NotTo(HaveOccurred())
+
+		gitKeepPath := filepath.Join(path, ".gitkeep")
+
+		err = ioutil.WriteFile(gitKeepPath, []byte{}, 0777)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = w.Add(filepath.Join(pool, directory, ".gitkeep"))
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	_, err = w.Commit("test-git-setup", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Ginkgo Local",
+			Email: "ginkgo@localhost",
+			When:  time.Now(),
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+}
+
+func addLockCommit(repoDir string) string {
+	return addLockToPool(repoDir, "lock-pool", fmt.Sprintf("%s-lock", randString()), "master")
+}
+
+func addLockToPool(repoDir, pool, lockName, branchName string) string {
+	r, err := git.PlainOpen(repoDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	w, err := r.Worktree()
+	Expect(err).NotTo(HaveOccurred())
+
+	err = w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branchName)),
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	lockFilePath := filepath.Join(pool, "unclaimed", lockName)
+
+	err = ioutil.WriteFile(filepath.Join(repoDir, lockFilePath), []byte(`{"some":"json"}`), 0777)
+	Expect(err).NotTo(HaveOccurred())
+
+	_, err = w.Add(lockFilePath)
+	Expect(err).NotTo(HaveOccurred())
+
+	commit, err := w.Commit("another lock added", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Ginkgo Local",
+			Email: "ginkgo@localhost",
+			When:  time.Now(),
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	obj, err := r.CommitObject(commit)
+	Expect(err).NotTo(HaveOccurred())
+
+	return fmt.Sprint(obj.Hash)
 }
 
 func getVersion(gitURI string, ref string) out.Version {
 	gitVersionRepo, err := ioutil.TempDir("", "git-version-repo")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	defer os.RemoveAll(gitVersionRepo)
 
 	gitSetup := exec.Command("git", "clone", gitURI, ".")
 	gitSetup.Dir = gitVersionRepo
 	err = gitSetup.Run()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	gitVersion := exec.Command("git", "rev-parse", ref)
 	gitVersion.Dir = gitVersionRepo
 	sha, err := gitVersion.Output()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return out.Version{
 		Ref: strings.TrimSpace(string(sha)),
 	}
+}
+
+func randString() string {
+	rand.Seed(time.Now().UnixNano())
+
+	alpha := []rune("abcdefghijklmnopqrstuvwxyz")
+
+	final := make([]rune, 10)
+
+	for i := range final {
+		final[i] = alpha[rand.Intn(len(alpha))]
+	}
+
+	return string(final)
 }

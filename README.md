@@ -192,3 +192,9 @@ of the same pool), you would put that name instead. For example:
     - put: aws-environments
       params: {release: environment-2}
 ```
+
+## Development
+
+## Dependency vendoring
+
+All dependencies have been vendored via [gvt](https://github.com/FiloSottile/gvt)
