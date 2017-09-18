@@ -25,14 +25,20 @@ var outPath string
 var inPath string
 
 var _ = BeforeSuite(func() {
-	var err error
+	if _, err := os.Stat("/opt/go/out"); err == nil {
+		outPath = "/opt/go/out"
+	} else {
+		outPath, err = gexec.Build("github.com/concourse/pool-resource/cmd/out")
+		Ω(err).ShouldNot(HaveOccurred())
+	}
 
-	outPath, err = gexec.Build("github.com/concourse/pool-resource/cmd/out")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	pwd, err := os.Getwd()
-	Ω(err).ShouldNot(HaveOccurred())
-	inPath = filepath.Join(pwd, "../assets/in")
+	if _, err := os.Stat("/opt/resource/in"); err == nil {
+		inPath = "/opt/resource/in"
+	} else {
+		pwd, err := os.Getwd()
+		Ω(err).ShouldNot(HaveOccurred())
+		inPath = filepath.Join(pwd, "../assets/in")
+	}
 })
 
 type version struct {
