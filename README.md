@@ -192,3 +192,30 @@ of the same pool), you would put that name instead. For example:
     - put: aws-environments
       params: {release: environment-2}
 ```
+
+## Development
+
+### Prerequisites
+
+* golang is *required* - version 1.9.x is tested; earlier versions may also
+  work.
+* docker is *required* - version 17.06.x is tested; earlier versions may also
+  work.
+
+### Running the tests
+
+The tests have been embedded with the `Dockerfile`; ensuring that the testing
+environment is consistent across any `docker` enabled platform. When the docker
+image builds, the test are run inside the docker container, on failure they
+will stop the build.
+
+Run the tests with the following command:
+
+```sh
+docker build -t pool-resource .
+```
+
+### Contributing
+
+Please make all pull requests to the `master` branch and ensure tests pass
+locally.
