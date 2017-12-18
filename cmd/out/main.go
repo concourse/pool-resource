@@ -42,6 +42,8 @@ func main() {
 
 	lockPool := out.NewLockPool(request.Source, os.Stderr)
 
+	lockPool.LockHandler.SuppressTriggering(request.Params.SuppressTriggering)
+
 	var (
 		lock    string
 		version out.Version

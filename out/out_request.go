@@ -47,12 +47,13 @@ func (s *Source) UnmarshalJSON(b []byte) error {
 }
 
 type OutParams struct {
-	Release    string `json:"release"`
-	Acquire    bool   `json:"acquire"`
-	Add        string `json:"add"`
-	AddClaimed string `json:"add_claimed"`
-	Remove     string `json:"remove"`
-	Claim      string `json:"claim"`
+	Release            string `json:"release"`
+	Acquire            bool   `json:"acquire"`
+	Add                string `json:"add"`
+	AddClaimed         string `json:"add_claimed"`
+	Remove             string `json:"remove"`
+	Claim              string `json:"claim"`
+	SuppressTriggering bool   `json:"suppress_triggering"`
 }
 
 func (request OutRequest) Validate() []string {
