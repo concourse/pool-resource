@@ -938,5 +938,41 @@ func itWorksWithBranch(branchName string) {
 				})
 			})
 		})
+
+		Context("when triggering is suppressed", func() {
+			BeforeEach(func() {
+				outRequest = out.OutRequest{
+					Source: out.Source{
+						URI:        bareGitRepo,
+						Branch:     branchName,
+						Pool:       "lock-pool",
+						RetryDelay: 100 * time.Millisecond,
+					},
+					Params: out.OutParams{
+						Claim: "some-lock",
+						SuppressTriggering: true,
+					},
+				}
+
+				session := runOut(outRequest, sourceDir)
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
+
+				err := json.Unmarshal(session.Out.Contents(), &outResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("suppresses triggering in the commit log", func() {
+				log := exec.Command("git", "log", "-1", outResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 claiming: some-lock\\s*\\[skip ci\\]"))
+			})
+		})
 	})
 }

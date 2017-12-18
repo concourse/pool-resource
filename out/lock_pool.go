@@ -28,7 +28,7 @@ func NewLockPool(source Source, output io.Writer) LockPool {
 	return lockPool
 }
 
-//go:generate counterfeiter . LockHandler
+//go:generate counterfeiter -o fakes/fake_lock_handler.go . LockHandler
 
 type LockHandler interface {
 	GrabAvailableLock() (lock string, version string, err error)
@@ -40,6 +40,8 @@ type LockHandler interface {
 	Setup() error
 	BroadcastLockPool() ([]byte, error)
 	ResetLock() error
+
+	SuppressTriggering(suppress bool)
 }
 
 func (lp *LockPool) ClaimLock(lock string) (Version, error) {

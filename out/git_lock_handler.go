@@ -18,6 +18,8 @@ type GitLockHandler struct {
 	Source Source
 
 	dir string
+
+	suppressTriggering bool
 }
 
 const falsePushString = "Everything up-to-date"
@@ -41,8 +43,7 @@ func (glh *GitLockHandler) ClaimLock(lockName string) (string, error) {
 		return "", err
 	}
 
-	commitMessage := fmt.Sprintf(glh.messagePrefix()+"claiming: %s", lockName)
-	_, err = glh.git("commit", "-m", commitMessage)
+	err = glh.commit("claiming", lockName)
 	if err != nil {
 		return "", err
 	}
@@ -63,7 +64,7 @@ func (glh *GitLockHandler) RemoveLock(lockName string) (string, error) {
 		return "", err
 	}
 
-	_, err = glh.git("commit", "-m", glh.messagePrefix()+fmt.Sprintf("removing: %s", lockName))
+	err = glh.commit("removing", lockName)
 	if err != nil {
 		return "", err
 	}
@@ -84,7 +85,7 @@ func (glh *GitLockHandler) UnclaimLock(lockName string) (string, error) {
 		return "", err
 	}
 
-	_, err = glh.git("commit", "-m", glh.messagePrefix()+fmt.Sprintf("unclaiming: %s", lockName))
+	err = glh.commit("unclaiming", lockName)
 	if err != nil {
 		return "", err
 	}
@@ -109,6 +110,11 @@ func (glh *GitLockHandler) ResetLock() error {
 	}
 
 	return nil
+}
+
+
+func (glh *GitLockHandler) SuppressTriggering(suppress bool) {
+	glh.suppressTriggering = suppress
 }
 
 func (glh *GitLockHandler) AddLock(lock string, contents []byte, initiallyClaimed bool) (string, error) {
@@ -200,8 +206,7 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 		return "", "", err
 	}
 
-	commitMessage := fmt.Sprintf(glh.messagePrefix()+"claiming: %s", name)
-	_, err = glh.git("commit", "-m", commitMessage)
+	err = glh.commit("claiming", name)
 	if err != nil {
 		return "", "", err
 	}
@@ -234,6 +239,15 @@ func (glh *GitLockHandler) BroadcastLockPool() ([]byte, error) {
 	}
 
 	return contents, err
+}
+
+func (glh *GitLockHandler) commit(action string, lockName string) error {
+	suppression := ""
+	if glh.suppressTriggering {
+		suppression = "\n\n[skip ci]"
+	}
+	_, err := glh.git("commit", "-m", fmt.Sprintf("%s%s: %s%s", glh.messagePrefix(), action, lockName, suppression))
+	return err
 }
 
 func (glh *GitLockHandler) git(args ...string) ([]byte, error) {

@@ -97,7 +97,7 @@ Performs one of the following actions to change the state of the pool.
 
 #### Parameters
 
-One of the following is required.
+One of the following is required:
 
 * `acquire`: If true, we will attempt to move a randomly chosen lock from the
   pool's unclaimed directory to the claimed directory. Acquiring will retry
@@ -129,6 +129,11 @@ One of the following is required.
   or moving a lock between pools by using `add` with a different pool in a
   second step.
 
+Additional parameters:
+
+* `suppress_triggering`: *Optional.* Determines whether or not to suppress triggering
+  of a job by the resultant git commit. The default is `false`, meaning that triggering
+  is allowed. Valid values: `true`, `false`.
 
 ## Example Concourse Configuration
 
