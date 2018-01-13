@@ -94,6 +94,14 @@ func main() {
 		}
 	}
 
+	if request.Params.Update != "" {
+		lockPath := filepath.Join(sourceDir, request.Params.Update)
+		lock, version, err = lockPool.UpdateLock(lockPath)
+		if err != nil {
+			fatal("updating lock", err)
+		}
+	}
+
 	err = json.NewEncoder(os.Stdout).Encode(out.OutResponse{
 		Version: version,
 		Metadata: []out.MetadataPair{
