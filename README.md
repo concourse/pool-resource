@@ -129,6 +129,18 @@ One of the following is required.
   or moving a lock between pools by using `add` with a different pool in a
   second step.
 
+* `update`: If set, we will update an existing lock in the pool.
+
+  * If the existing lock is in the unclaimed state we will update it with the
+    contents of the `metadata` file.
+  * If no such lock is present in either the claimed or unclaimed state we add a
+    new lock to the pool in the unclaimed state.
+  * If the lock is in the claimed state we will wait for it to be unclaimed and
+    proceed to update it as above.
+
+  The value is the path to a directory containing the files `name` and
+  `metadata` which should contain the name of your new lock and the contents you
+  would like in the lock, respectively.
 
 ## Example Concourse Configuration
 

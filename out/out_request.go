@@ -53,6 +53,7 @@ type OutParams struct {
 	AddClaimed string `json:"add_claimed"`
 	Remove     string `json:"remove"`
 	Claim      string `json:"claim"`
+	Update     string `json:"update"`
 }
 
 func (request OutRequest) Validate() []string {
@@ -75,7 +76,8 @@ func (request OutRequest) Validate() []string {
 		request.Params.Add == "" &&
 		request.Params.AddClaimed == "" &&
 		request.Params.Remove == "" &&
-		request.Params.Claim == "" {
+		request.Params.Claim == "" &&
+		request.Params.Update == "" {
 		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, add, or add_claimed)")
 	}
 

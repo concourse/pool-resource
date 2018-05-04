@@ -146,6 +146,51 @@ func (glh *GitLockHandler) AddLock(lock string, contents []byte, initiallyClaime
 	return string(ref), nil
 }
 
+func (glh *GitLockHandler) UpdateLock(lockName string, contents []byte) (string, error) {
+	// Wait if claimed
+	_, err := ioutil.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "claimed", lockName))
+	if err == nil {
+		return "", ErrNoLocksAvailable
+	}
+
+	operation := "updating"
+
+	// Remove if unclaimed
+	err = os.Remove(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed", lockName))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		operation = "adding unclaimed"
+	}
+
+	// Add new lock
+	lockPath := filepath.Join(glh.dir, glh.Source.Pool, "unclaimed", lockName)
+
+	err = ioutil.WriteFile(lockPath, contents, 0555)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = glh.git("add", lockPath)
+	if err != nil {
+		return "", err
+	}
+
+	commitMessage := glh.messagePrefix() + fmt.Sprintf("%s: %s", operation, lockName)
+	_, err = glh.git("commit", lockPath, "-m", commitMessage)
+	if err != nil {
+		return "", err
+	}
+
+	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	return string(ref), nil
+}
+
 func (glh *GitLockHandler) Setup() error {
 	var err error
 
