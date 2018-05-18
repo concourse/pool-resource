@@ -133,7 +133,7 @@ func itWorksWithBranch(branchName string) {
 				It("complains about it", func() {
 					errorMessages := string(session.Err.Contents())
 
-					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, claim, add, or add_claimed)"))
+					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, claim, check, add, or add_claimed)"))
 				})
 			})
 		})
@@ -1138,6 +1138,127 @@ func itWorksWithBranch(branchName string) {
 					Ω(sessionOne.Err).ShouldNot(gbytes.Say("err"))
 					Ω(sessionTwo.Err).ShouldNot(gbytes.Say("err"))
 				})
+			})
+		})
+
+		Context("when checking a lock", func() {
+			BeforeEach(func() {
+				outRequest = out.OutRequest{
+					Source: out.Source{
+						URI:        bareGitRepo,
+						Branch:     branchName,
+						Pool:       "lock-pool",
+						RetryDelay: 100 * time.Millisecond,
+					},
+					Params: out.OutParams{
+						Check: "some-lock",
+					},
+				}
+				session := runOut(outRequest, sourceDir)
+				<-session.Exited
+				Expect(session.ExitCode()).To(Equal(0))
+
+				err := json.Unmarshal(session.Out.Contents(), &outResponse)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("exits leaving it unclaimed", func() {
+				version := getVersion(bareGitRepo, "origin/"+branchName)
+
+				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer os.RemoveAll(reCloneRepo)
+
+				reClone := exec.Command("git", "clone", "--branch", branchName, bareGitRepo, ".")
+				reClone.Dir = reCloneRepo
+				err = reClone.Run()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = ioutil.ReadFile(filepath.Join(reCloneRepo, "lock-pool", "unclaimed", "some-lock"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(outResponse).Should(Equal(out.OutResponse{
+					Version: version,
+					Metadata: []out.MetadataPair{
+						{Name: "lock_name", Value: "some-lock"},
+						{Name: "pool_name", Value: "lock-pool"},
+					},
+				}))
+
+			})
+
+			It("actually does claim it", func() {
+				log := exec.Command("git", "log", "--oneline", "-2", "--reverse", outResponse.Version.Ref)
+				log.Dir = bareGitRepo
+
+				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-session.Exited
+
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 claiming: some-lock"))
+				Ω(session).Should(gbytes.Say("pipeline-name/job-name build 42 unclaiming: some-lock"))
+			})
+
+			Context("when the specific lock is already claimed", func() {
+				var unclaimLockDir string
+				BeforeEach(func() {
+					var err error
+					unclaimLockDir, err = ioutil.TempDir("", "claiming-locks")
+					Ω(err).ShouldNot(HaveOccurred())
+
+					claimRequest := out.OutRequest{
+						Source: out.Source{
+							URI:        bareGitRepo,
+							Branch:     branchName,
+							Pool:       "lock-pool",
+							RetryDelay: 100 * time.Millisecond,
+						},
+						Params: out.OutParams{
+							Claim: "some-lock",
+						},
+					}
+
+					session := runOut(claimRequest, sourceDir)
+					<-session.Exited
+					Expect(session.ExitCode()).To(Equal(0))
+
+					err = json.Unmarshal(session.Out.Contents(), &outResponse)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				AfterEach(func() {
+					err := os.RemoveAll(unclaimLockDir)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("continues to acquire the same lock", func() {
+					checkSession := runOut(outRequest, sourceDir)
+					Consistently(checkSession).ShouldNot(gexec.Exit(0))
+
+					unclaimLock := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
+						git clone --branch %s %s .
+
+						git config user.email "ginkgo@localhost"
+						git config user.name "Ginkgo Local"
+
+						git mv lock-pool/claimed/some-lock lock-pool/unclaimed/
+						git commit -am "unclaim some-lock"
+						git push
+					`, branchName, bareGitRepo))
+
+					unclaimLock.Stdout = GinkgoWriter
+					unclaimLock.Stderr = GinkgoWriter
+					unclaimLock.Dir = unclaimLockDir
+
+					err := unclaimLock.Run()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					<-checkSession.Exited
+					Expect(checkSession.ExitCode()).To(Equal(0))
+				})
+
 			})
 		})
 	})

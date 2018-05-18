@@ -102,6 +102,18 @@ func main() {
 		}
 	}
 
+	if request.Params.Check != "" {
+		lock = request.Params.Check
+		version, err = lockPool.ClaimLock(lock)
+		if err != nil {
+			fatal("claiming lock for check", err)
+		}
+		_, version, err = lockPool.UnclaimLock(lock)
+		if err != nil {
+			fatal("unclaiming lock for check", err)
+		}
+	}
+
 	err = json.NewEncoder(os.Stdout).Encode(out.OutResponse{
 		Version: version,
 		Metadata: []out.MetadataPair{
