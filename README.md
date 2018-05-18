@@ -138,6 +138,12 @@ One of the following is required.
   * If the lock is in the claimed state we will wait for it to be unclaimed and
     proceed to update it as above.
 
+* `check`: If set, we will check the lock status of a specified lock from the pool.
+  This is the atomic equivalent of performing a `claim` on that lock, followed
+  by a `release`. Like `claim`, will retry until the lock becomes available.
+  Note that this will, in fact, perform locking and unlocking operations, and will
+  produce new commits in the Git repository.
+
   The value is the path to a directory containing the files `name` and
   `metadata` which should contain the name of your new lock and the contents you
   would like in the lock, respectively.

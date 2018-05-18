@@ -110,10 +110,14 @@ func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
 	}
 	lockName := strings.TrimSpace(string(nameFileContents))
 
+	return lp.UnclaimLock(lockName)
+}
+
+func (lp *LockPool) UnclaimLock(lockName string) (string, Version, error) {
 	fmt.Fprintf(lp.Output, "releasing lock: %s on pool: %s\n", lockName, lp.Source.Pool)
 
 	var ref string
-	err = lp.performRobustAction(func() (bool, error) {
+	err := lp.performRobustAction(func() (bool, error) {
 		var err error
 		ref, err = lp.LockHandler.UnclaimLock(lockName)
 
