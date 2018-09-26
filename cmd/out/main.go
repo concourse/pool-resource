@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -46,6 +47,10 @@ func main() {
 		lock    string
 		version out.Version
 	)
+
+	// Always print a newline to the log. This allows to know _when_ we started
+	// long-running operations (for example, waiting to acquire a lock).
+	fmt.Fprintf(lockPool.Output, "Starting\n")
 
 	if request.Params.Acquire {
 		lock, version, err = lockPool.AcquireLock()
