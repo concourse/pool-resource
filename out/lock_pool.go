@@ -46,6 +46,9 @@ type LockHandler interface {
 func (lp *LockPool) ClaimLock(lock string) (Version, error) {
 	var ref string
 
+	fmt.Fprintf(lp.Output, "claiming lock on: %s\n", lp.Source.Pool)
+	fmt.Fprintf(lp.Output, "waiting for lock\n")
+
 	err := lp.performRobustAction(func() (bool, error) {
 		var err error
 
@@ -63,6 +66,7 @@ func (lp *LockPool) ClaimLock(lock string) (Version, error) {
 
 		return false, nil
 	})
+	fmt.Fprintf(lp.Output, "\nclaimed!\n")
 
 	return Version{
 		Ref: strings.TrimSpace(ref),
@@ -76,6 +80,7 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 	)
 
 	fmt.Fprintf(lp.Output, "acquiring lock on: %s\n", lp.Source.Pool)
+	fmt.Fprintf(lp.Output, "waiting for lock\n")
 
 	err := lp.performRobustAction(func() (bool, error) {
 		var err error
@@ -97,6 +102,7 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 	if err != nil {
 		return "", Version{}, err
 	}
+	fmt.Fprintf(lp.Output, "\nacquired!\n")
 
 	return lock, Version{
 		Ref: strings.TrimSpace(ref),
@@ -229,6 +235,7 @@ func (lp *LockPool) UpdateLock(inDir string) (string, Version, error) {
 	}
 
 	fmt.Fprintf(lp.Output, "updating lock: %s in pool: %s\n", lockName, lp.Source.Pool)
+	fmt.Fprintf(lp.Output, "waiting for lock\n")
 
 	var ref string
 
@@ -252,6 +259,7 @@ func (lp *LockPool) UpdateLock(inDir string) (string, Version, error) {
 	if err != nil {
 		return "", Version{}, err
 	}
+	fmt.Fprintf(lp.Output, "\nupdated!\n")
 
 	return lockName, Version{
 		Ref: strings.TrimSpace(ref),
