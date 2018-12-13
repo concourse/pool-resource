@@ -84,6 +84,7 @@ func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 		"BUILD_NAME=42",
 		"BUILD_JOB_NAME=job-name",
 		"BUILD_PIPELINE_NAME=pipeline-name",
+		"BUILD_TEAM_NAME=team-name",
 	)
 
 	stdin, err := outCmd.StdinPipe()
