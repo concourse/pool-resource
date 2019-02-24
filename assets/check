@@ -21,6 +21,7 @@ configure_credentials $payload
 uri=$(jq -r '.source.uri // ""' < $payload)
 branch=$(jq -r '.source.branch // ""' < $payload)
 pool_name=$(jq -r '.source.pool // ""' < $payload)
+diff_filter=$(jq -r '.source.diff_filter // ""' < $payload)
 ref=$(jq -r '.version.ref // ""' < $payload)
 
 
@@ -57,6 +58,10 @@ else
   cd $destination
 fi
 
+if [ -n "$diff_filter" ]; then
+  diff_filter="--diff-filter $diff_filter"
+fi
+
 {
   if [ -n "$ref" ] && git cat-file -e "$ref"; then
     init_commit=$(git rev-list --max-parents=0 HEAD)
@@ -69,6 +74,6 @@ fi
     log_range="-1"
   fi
 
-  git log $log_range --pretty='format:%H' -- $pool_name
+  git log $log_range $diff_filter --pretty='format:%H' -- $pool_name
 
  } | jq -R '.' | jq -s "map({ref: .})" >&3
