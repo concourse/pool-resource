@@ -213,6 +213,7 @@ of the same pool), you would put that name instead. For example:
   work.
 * docker is *required* - version 17.06.x is tested; earlier versions may also
   work.
+* godep is used for dependency management of the golang packages.
 
 ### Running the tests
 
@@ -221,10 +222,11 @@ environment is consistent across any `docker` enabled platform. When the docker
 image builds, the test are run inside the docker container, on failure they
 will stop the build.
 
-Run the tests with the following command:
+Run the tests with the following commands for both `alpine` and `ubuntu` images:
 
 ```sh
-docker build -t pool-resource .
+docker build -t pool-resource -f dockerfiles/alpine/Dockerfile .
+docker build -t pool-resource -f dockerfiles/ubuntu/Dockerfile .
 ```
 
 ### Contributing
