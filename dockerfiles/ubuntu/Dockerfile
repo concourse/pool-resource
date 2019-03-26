@@ -1,4 +1,4 @@
-FROM golang:alpine as builder
+FROM concourse/golang-builder as builder
 COPY . /go/src/github.com/concourse/pool-resource
 ENV CGO_ENABLED 0
 ENV GOPATH /go/src/github.com/concourse/pool-resource/Godeps/_workspace:${GOPATH}
@@ -8,7 +8,7 @@ RUN set -e; for pkg in $(go list ./...); do \
 		go test -o "/tests/$(basename $pkg).test" -c $pkg; \
 	done
 
-FROM concourse/git-resource AS resource
+FROM concourse/git-resource:ubuntu AS resource
 
 ADD assets/ /opt/resource/
 RUN chmod +x /opt/resource/*
