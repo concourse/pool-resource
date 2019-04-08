@@ -73,9 +73,8 @@ filed named `.gitkeep`. Finally, create individual locks by making an empty file
   Valid values: `60s`, `90m`, `1h`.
 
 * `diff_filter`: *Optional.* If specified, changes the behavior of check. This is an advanced feature of git, refer
-  to [git-log](https://git-scm.com/docs/git-log#git-log---diff-filterACDMRTUXB82308203) for more information.
+  to [git-log](https://git-scm.com/docs/git-log#Documentation/git-log.txt---diff-filterACDMRTUXB82308203) for more information.
   The default behavior is checking on every commit.
-
 
 ## Behavior
 
@@ -85,9 +84,16 @@ The repository is cloned (or pulled if already present), and any commits made to
 If no version is given, the ref for `HEAD` is returned. The behavior can be altered by defining `diff_filter` in source
 configuration.
 
-For example, if only want to check whenever the resource is removed (deleted) from the pool, `diff_filter: D` can be
-set in the source configuration.
+Here is a mapping between `diff-filter` and check behavior:
 
+| Diff-filter | Check Behavior          |
+|-------------|-------------------------|
+| A           | add, add_claimed        |
+| R           | acquire, claim, release |
+| D           | remove                  |
+| M           | update                  |
+
+For example, if `diff_filter: AM` is specificed, it will only check when a resource is added to the pool or the existing resource is updated.
 
 ### `in`: Fetch an acquired lock.
 
