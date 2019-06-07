@@ -72,6 +72,14 @@ filed named `.gitkeep`. Finally, create individual locks by making an empty file
   retrying to acquire a lock or release a lock. The default is 10 seconds.
   Valid values: `60s`, `90m`, `1h`.
 
+### Example
+
+Fetching a repo with only 100 commits of history:
+
+``` yaml
+- get: source-code
+  params: {depth: 100}
+```
 
 ## Behavior
 
@@ -83,6 +91,7 @@ given, the ref for `HEAD` is returned.
 
 ### `in`: Fetch an acquired lock.
 
+
 Outputs 2 files:
 
 * `metadata`: Contains the contents of whatever was in your lock file. This is
@@ -90,6 +99,10 @@ Outputs 2 files:
 
 * `name`: Contains the name of lock that was acquired.
 
+#### Parameters
+
+* `depth`: *Optional.* If a positive integer is given, *shallow* clone the
+  repository using the `--depth` option.
 
 ### `out`: Acquire, release, add, or remove a lock.
 
