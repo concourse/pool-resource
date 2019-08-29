@@ -218,6 +218,22 @@ of the same pool), you would put that name instead. For example:
       params: {release: environment-2}
 ```
 
+### Claiming a specific lock from a pool, and releasing
+
+The parameter for `claim` takes the name of a lock, and releasing the
+lock requires the name of the step which acquired the lock. For
+example:
+
+```
+- name: test-specific-aws
+  plan:
+    - put: specific-aws-env
+      resource: aws-environments
+      params: {claim: env-1}
+    - put: aws-environments
+      params: {release: specific-aws-env}
+```
+
 ## Development
 
 ### Prerequisites
