@@ -63,10 +63,7 @@ if [ -n "$branch" ]; then
   branchflag="--branch $branch"
 fi
 
-depthflag="--depth 1"
-if test "$depth" -ne 1 2> /dev/null; then
-  depthflag="--depth $depth"
-fi
+depthflag="--depth $depth"
 
 git clone --single-branch $depthflag $uri $branchflag $destination
 
