@@ -121,6 +121,15 @@ it_can_check_with_credentials() {
   [ ! -f "$HOME/.netrc" ]
 }
 
+it_supports_private_key_without_user() {
+  local repo=$(init_repo)
+  local key=$TMPDIR/key-no-passphrase
+
+  ssh-keygen -f $key
+  check_uri_with_key $repo $key
+
+  ! grep "^User " $HOME/.ssh/config
+}
 
 it_clears_netrc_even_after_errors() {
   local repo=$(init_repo)
@@ -146,4 +155,5 @@ run it_can_check_from_a_bogus_sha
 run it_checks_given_pool
 run it_can_check_when_not_ff
 run it_can_check_with_credentials
+run it_supports_private_key_without_user
 run it_clears_netrc_even_after_errors

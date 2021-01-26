@@ -174,3 +174,17 @@ check_uri_with_credentials() {
     }
   }" | ${resource_dir}/check | tee /dev/stderr
 }
+
+check_uri_with_key() {
+  local uri=$1
+  local key=$2
+
+  jq -n "{
+    source: {
+      uri: $(echo $uri | jq -R .),
+      branch: \"master\",
+      pool: \"my_pool\",
+      private_key: $(cat $key | jq -s -R .),
+    }
+  }" | ${resource_dir}/check | tee /dev/stderr
+}
