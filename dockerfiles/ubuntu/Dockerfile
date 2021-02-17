@@ -2,10 +2,9 @@ ARG base_image
 ARG builder_image=concourse/golang-builder
 
 FROM ${builder_image} as builder
-COPY . /go/src/github.com/concourse/pool-resource
-ENV CGO_ENABLED 0
-ENV GOPATH /go/src/github.com/concourse/pool-resource/Godeps/_workspace:${GOPATH}
-ENV PATH /go/src/github.com/concourse/pool-resource/Godeps/_workspace/bin:${PATH}
+WORKDIR /src
+COPY . .
+RUN go mod download
 RUN go build -o /assets/out github.com/concourse/pool-resource/cmd/out
 RUN set -e; for pkg in $(go list ./...); do \
 		go test -o "/tests/$(basename $pkg).test" -c $pkg; \

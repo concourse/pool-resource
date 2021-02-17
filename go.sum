@@ -1,0 +1,6 @@
+github.com/mitchellh/mapstructure v0.0.0-20160212031839-d2dd02622084 h1:Z2EJ6SUYrzx6J/YH/ltZthkUQTB/5+Ykpkew6y9DGJE=
+github.com/mitchellh/mapstructure v0.0.0-20160212031839-d2dd02622084/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
+github.com/onsi/ginkgo v1.2.1-0.20150902000816-1b59c57df76e h1:aQIaI5DlTXhj6mKIoRsMd52QdpmW2iZ6vYTqfNVu4QI=
+github.com/onsi/ginkgo v1.2.1-0.20150902000816-1b59c57df76e/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
+github.com/onsi/gomega v0.0.0-20150831193734-6331bf5a5b5e h1:NMGo3LCbG3Trqni7E6kOB3jHfp8oV/4gqgIoZuEUHuA=
+github.com/onsi/gomega v0.0.0-20150831193734-6331bf5a5b5e/go.mod h1:C1qb7wdrVGGVU+Z6iS04AVkA3Q65CEZX59MT0QO5uiA=
