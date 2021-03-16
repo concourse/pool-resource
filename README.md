@@ -254,8 +254,8 @@ will stop the build.
 Run the tests with the following commands for both `alpine` and `ubuntu` images:
 
 ```sh
-docker build -t pool-resource -f dockerfiles/alpine/Dockerfile .
-docker build -t pool-resource -f dockerfiles/ubuntu/Dockerfile .
+docker build -t pool-resource --target tests -f dockerfiles/alpine/Dockerfile .
+docker build -t pool-resource --target tests -f dockerfiles/ubuntu/Dockerfile .
 ```
 
 ### Contributing
