@@ -131,6 +131,37 @@ it_supports_private_key_without_user() {
   ! grep "^User " $HOME/.ssh/config
 }
 
+it_configures_http_tunnel() {
+  local repo=$(init_repo)
+  local key=$TMPDIR/key-no-passphrase
+  local host=proxy-server.mycorp.com
+  local port=3128
+
+  ssh-keygen -f $key
+  check_uri_with_key_and_tunnel $repo $key $host $port
+
+  local expected_pass_file=""
+  grep "ProxyCommand /usr/bin/proxytunnel $expected_pass_file -p $host:$port -d %h:%p" $HOME/.ssh/config
+}
+
+it_configures_http_tunnel_with_authentication() {
+  local repo=$(init_repo)
+  local key=$TMPDIR/key-no-passphrase
+  local host=proxy-server.mycorp.com
+  local port=3128
+  local username=username
+  local password=password
+
+  ssh-keygen -f $key
+  check_uri_with_key_and_tunnel_with_authentication $repo $key $host $port $username $password
+
+  local expected_pass_file="-F ~/.ssh/tunnel_config"
+  grep "ProxyCommand /usr/bin/proxytunnel $expected_pass_file -p $host:$port -d %h:%p" $HOME/.ssh/config
+
+  grep "proxy_user = $username" ~/.ssh/tunnel_config
+  grep "proxy_passwd = $password" ~/.ssh/tunnel_config
+}
+
 it_clears_netrc_even_after_errors() {
   local repo=$(init_repo)
   local ref=$(make_commit $repo)
@@ -156,4 +187,6 @@ run it_checks_given_pool
 run it_can_check_when_not_ff
 run it_can_check_with_credentials
 run it_supports_private_key_without_user
+run it_configures_http_tunnel
+run it_configures_http_tunnel_with_authentication
 run it_clears_netrc_even_after_errors
