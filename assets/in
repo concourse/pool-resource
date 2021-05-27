@@ -33,6 +33,7 @@ payload=$(mktemp $TMPDIR/pool-resource-request.XXXXXX)
 cat > $payload <&0
 
 load_pubkey $payload
+configure_https_tunnel $payload
 configure_credentials $payload
 
 uri=$(jq -r '.source.uri // ""' < $payload)

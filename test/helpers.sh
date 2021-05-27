@@ -188,3 +188,47 @@ check_uri_with_key() {
     }
   }" | ${resource_dir}/check | tee /dev/stderr
 }
+
+check_uri_with_key_and_tunnel() {
+  local uri=$1
+  local key=$2
+  local host=$3
+  local port=$4
+
+  jq -n "{
+    source: {
+      uri: $(echo $uri | jq -R .),
+      branch: \"master\",
+      pool: \"my_pool\",
+      private_key: $(cat $key | jq -s -R .),
+      https_tunnel: {
+        proxy_host: $(echo $host | jq -R .),
+        proxy_port: $(echo $port | jq -R .),
+      },
+    }
+  }" | ${resource_dir}/check | tee /dev/stderr
+}
+
+check_uri_with_key_and_tunnel_with_authentication() {
+  local uri=$1
+  local key=$2
+  local host=$3
+  local port=$4
+  local username=$5
+  local password=$6
+
+  jq -n "{
+    source: {
+      uri: $(echo $uri | jq -R .),
+      branch: \"master\",
+      pool: \"my_pool\",
+      private_key: $(cat $key | jq -s -R .),
+      https_tunnel: {
+        proxy_host: $(echo $host | jq -R .),
+        proxy_port: $(echo $port | jq -R .),
+        proxy_user: $(echo $username | jq -R .),
+        proxy_password: $(echo $password | jq -R .),
+      },
+    }
+  }" | ${resource_dir}/check | tee /dev/stderr
+}

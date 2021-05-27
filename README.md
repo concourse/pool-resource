@@ -72,6 +72,13 @@ filed named `.gitkeep`. Finally, create individual locks by making an empty file
   retrying to acquire a lock or release a lock. The default is 10 seconds.
   Valid values: `60s`, `90m`, `1h`.
 
+* `https_tunnel`: *Optional.* Information about an HTTPS proxy that will be used to tunnel SSH-based git commands over.
+  Has the following sub-properties:
+  * `proxy_host`: *Required.* The host name or IP of the proxy server
+  * `proxy_port`: *Required.* The proxy server's listening port
+  * `proxy_user`: *Optional.* If the proxy requires authentication, use this username
+  * `proxy_password`: *Optional.* If the proxy requires authentication, use this password
+
 ### Example
 
 Fetching a repo with only 100 commits of history:
@@ -234,6 +241,29 @@ example:
       params: {release: specific-aws-env}
 ```
 
+### Configuring resource to proxy SSH commands through an HTTP proxy
+
+```
+resources:
+- name: aws-environments
+  type: pool
+  source:
+    uri: git@github.com:concourse/locks.git
+    branch: master
+    pool: aws
+    private_key: |
+      -----BEGIN RSA PRIVATE KEY-----
+      MIIEowIBAAKCAQEAtCS10/f7W7lkQaSgD/mVeaSOvSF9ql4hf/zfMwfVGgHWjj+W
+      <Lots more text>
+      DWiJL+OFeg9kawcUL6hQ8JeXPhlImG6RTUffma9+iGQyyBMCGd1l
+      -----END RSA PRIVATE KEY-----
+    https_tunnel:
+      proxy_host: proxy-server.mycorp.com
+      proxy_port: 3128
+      proxy_user: myuser
+      proxy_password: myverysecurepassword
+```
+
 ## Development
 
 ### Prerequisites
@@ -256,6 +286,29 @@ Run the tests with the following commands for both `alpine` and `ubuntu` images:
 ```sh
 docker build -t pool-resource --target tests -f dockerfiles/alpine/Dockerfile .
 docker build -t pool-resource --target tests -f dockerfiles/ubuntu/Dockerfile .
+```
+
+#### Note about the integration tests
+
+If you want to run the integration tests, a bit more work is required. You will require
+an actual git repo to which you can push and pull, configured for SSH access. To do this,
+add two files to `integration-tests/ssh` (note that names **are** important):
+* `test_key`: This is the private key used to authenticate against your repo.
+* `test_repo`: This file contains one line of the form `test_repo_url[#test_branch]`.
+  If the branch is not specified, it defaults to `main`. For example,
+  `git@github.com:concourse-git-tester/git-resource-integration-tests.git` or
+  `git@github.com:concourse-git-tester/git-resource-integration-tests.git#testing`
+
+To set up or reset the contents of the repo, use the `integration-tests/ssh/init-repo.sh` script. 
+The script clones the configured repository, (re-)creates the relevant directories,
+commits and pushes the changes. If you'd rather execute the commands yourself, view the script
+contents to understand the directory structure expected by the integration tests. 
+
+Then run the tests for both `alpine` and `ubuntu` images:
+
+```sh
+docker build -t pool-resource --target integrationtests -f dockerfiles/alpine/Dockerfile .
+docker build -t pool-resource --build-arg base_image=concourse/golang-builder --target integrationtests -f dockerfiles/ubuntu/Dockerfile .
 ```
 
 ### Contributing
