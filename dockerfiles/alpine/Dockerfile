@@ -11,7 +11,7 @@ RUN set -e; for pkg in $(go list ./...); do \
 	done
 
 FROM ${base_image} AS resource
-RUN apk add --no-cache bash jq git git-daemon openssh make g++ libressl-dev
+RUN apk add --no-cache bash jq git git-daemon openssh make g++ openssl-dev
 RUN git config --global user.email "git@localhost"
 RUN git config --global user.name "git"
 
