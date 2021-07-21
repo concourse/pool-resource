@@ -11,7 +11,8 @@ RUN set -e; for pkg in $(go list ./...); do \
 	done
 
 FROM ${base_image} AS resource
-RUN apt-get update && apt-get install -y jq git make g++ libssl-dev openssh-client
+RUN apt update && apt upgrade -y -o Dpkg::Options::="--force-confdef"
+RUN apt update && apt install -y jq git make g++ libssl-dev openssh-client
 RUN git config --global user.email "git@localhost"
 RUN git config --global user.name "git"
 
@@ -37,7 +38,7 @@ ADD test/ /opt/resource-tests
 RUN /opt/resource-tests/all.sh
 
 FROM resource AS integrationtests
-RUN apt-get update && apt-get install -y squid net-tools
+RUN apt update && apt install -y squid net-tools
 ADD test/ /opt/resource-tests/test
 ADD integration-tests /opt/resource-tests/integration-tests
 RUN /opt/resource-tests/integration-tests/integration.sh
