@@ -11,6 +11,7 @@ RUN set -e; for pkg in $(go list ./...); do \
 	done
 
 FROM ${base_image} AS resource
+RUN apt update && apt upgrade -y -o Dpkg::Options::="--force-confdef"
 RUN apt-get update && apt-get install -y jq git
 RUN git config --global user.email "git@localhost"
 RUN git config --global user.name "git"

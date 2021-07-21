@@ -11,6 +11,7 @@ RUN set -e; for pkg in $(go list ./...); do \
 	done
 
 FROM ${base_image} AS resource
+RUN apk update && apk upgrade
 RUN apk add --no-cache bash jq git git-daemon openssh
 RUN git config --global user.email "git@localhost"
 RUN git config --global user.name "git"
