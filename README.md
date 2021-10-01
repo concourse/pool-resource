@@ -68,6 +68,14 @@ filed named `.gitkeep`. Finally, create individual locks by making an empty file
 
 * `password`: *Optional.* Password for HTTP(S) auth when pulling/pushing.
 
+* `git_config`: *Optional.* If specified as (list of pairs `name` and `value`)
+  it will configure git global options, setting each name with each value.
+
+  This can be useful to set options like `credential.helper` or similar.
+
+  See the [`git-config(1)` manual page](https://www.kernel.org/pub/software/scm/git/docs/git-config.html)
+  for more information and documentation of existing git options.
+
 * `retry_delay`: *Optional.* If specified, dictates how long to wait until
   retrying to acquire a lock or release a lock. The default is 10 seconds.
   Valid values: `60s`, `90m`, `1h`.

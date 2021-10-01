@@ -41,6 +41,9 @@ branch=$(jq -r '.source.branch // ""' < $payload)
 pool_name=$(jq -r '.source.pool // ""' < $payload)
 ref=$(jq -r '.version.ref // "HEAD"' < $payload)
 depth=$(jq -r '(.params.depth // 0)' < $payload)
+git_config_payload=$(jq -r '.source.git_config // []' < $payload)
+
+configure_git_global "${git_config_payload}"
 
 if [ -z "$uri" ]; then
   config_errors="${config_errors}invalid payload (missing uri)\n"
