@@ -205,14 +205,22 @@ func (glh *GitLockHandler) Setup() error {
 		return err
 	}
 
-	_, err = glh.git("config", "user.name", "CI Pool Resource")
+	_, err = glh.git("config", "user.name")
 	if err != nil {
-		return err
+		// hardcode git user.name if not already set in git_config
+		_, err = glh.git("config", "user.name", "CI Pool Resource")
+		if err != nil {
+			return err
+		}
 	}
 
-	_, err = glh.git("config", "user.email", "ci-pool@localhost")
+	_, err = glh.git("config", "user.email")
 	if err != nil {
-		return err
+		// hardcode git user.email if not already set in git_config
+		_, err = glh.git("config", "user.email", "ci-pool@localhost")
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
