@@ -16,6 +16,7 @@ type LockPool struct {
 
 	LockHandler LockHandler
 	dir         string
+	checkOnly   bool
 }
 
 func NewLockPool(source Source, output io.Writer) LockPool {

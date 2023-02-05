@@ -18,13 +18,13 @@ var ErrLockActive = errors.New("lock found")
 type GitLockHandler struct {
 	Source Source
 
-	dir string
+	dir       string
+	checkOnly bool
 }
 
 const falsePushString = "Everything up-to-date"
 const pushRejectedString = "[rejected]"
 const pushRemoteRejectedString = "[remote rejected]"
-const checkOnly = "check_only"
 
 func NewGitLockHandler(source Source) *GitLockHandler {
 	return &GitLockHandler{
@@ -194,15 +194,12 @@ func (glh *GitLockHandler) UpdateLock(lockName string, contents []byte) (string,
 }
 
 func (glh *GitLockHandler) CheckLock(lockName string) (string, error) {
+	glh.checkOnly = true
+
 	// Wait if claimed
 	_, err := ioutil.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "claimed", lockName))
 	if err == nil {
 		return "", ErrLockActive
-	}
-
-	err = ioutil.WriteFile(checkOnly, []byte{}, 0555)
-	if err != nil {
-		return "", err
 	}
 
 	_, err = glh.git("pull", "origin", glh.Source.Branch)
@@ -295,11 +292,8 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 }
 
 func (glh *GitLockHandler) BroadcastLockPool() ([]byte, error) {
-	_, err := os.Stat(checkOnly)
-
 	// validate if we're doing check only
-	if !os.IsNotExist(err) {
-		os.Remove(checkOnly)
+	if glh.checkOnly {
 		return []byte{}, nil
 	}
 
