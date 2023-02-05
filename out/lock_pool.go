@@ -275,6 +275,7 @@ func (lp *LockPool) CheckLock(inDir string) (string, Version, error) {
 	lockName := strings.TrimSpace(string(nameFileContents))
 
 	fmt.Fprintf(lp.Output, "checking lock: %s in pool: %s\n", lockName, lp.Source.Pool)
+	fmt.Fprintf(lp.Output, "waiting for lock to become unclaimed\n")
 
 	var ref string
 
