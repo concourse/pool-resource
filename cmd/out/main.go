@@ -102,6 +102,14 @@ func main() {
 		}
 	}
 
+	if request.Params.Check != "" {
+		lockPath := filepath.Join(sourceDir, request.Params.Check)
+		lock, version, err = lockPool.CheckLock(lockPath)
+		if err != nil {
+			fatal("checking lock", err)
+		}
+	}
+
 	err = json.NewEncoder(os.Stdout).Encode(out.OutResponse{
 		Version: version,
 		Metadata: []out.MetadataPair{

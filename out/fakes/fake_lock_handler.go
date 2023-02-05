@@ -89,6 +89,19 @@ type FakeLockHandler struct {
 		result1 string
 		result2 error
 	}
+        CheckLockStub        func(lock string) (version string, err error)
+        checkLockMutex       sync.RWMutex
+        checkLockArgsForCall []struct {
+                lock string
+        }
+        checkLockReturns struct {
+                result1 string
+                result2 error
+        }
+        checkLockReturnsOnCall map[int]struct {
+                result1 string
+                result2 error
+        }
 	SetupStub        func() error
 	setupMutex       sync.RWMutex
 	setupArgsForCall []struct{}
@@ -434,6 +447,23 @@ func (fake *FakeLockHandler) UpdateLockReturnsOnCall(i int, result1 string, resu
 		result1 string
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeLockHandler) CheckLock(lock string) (version string, err error) {
+        fake.checkLockMutex.Lock()
+        ret, specificReturn := fake.checkLockReturnsOnCall[len(fake.checkLockArgsForCall)]
+        fake.checkLockArgsForCall = append(fake.checkLockArgsForCall, struct {
+                lock string
+        }{lock})
+        fake.recordInvocation("CheckLock", []interface{}{lock})
+        fake.checkLockMutex.Unlock()
+        if fake.CheckLockStub != nil {
+                return fake.CheckLockStub(lock)
+        }
+        if specificReturn {
+                return ret.result1, ret.result2
+        }
+	return fake.checkLockReturns.result1, fake.checkLockReturns.result2
 }
 
 func (fake *FakeLockHandler) Setup() error {

@@ -37,6 +37,7 @@ type LockHandler interface {
 	RemoveLock(lock string) (version string, err error)
 	ClaimLock(lock string) (version string, err error)
 	UpdateLock(lock string, contents []byte) (version string, err error)
+	CheckLock(lock string) (version string, err error)
 
 	Setup() error
 	BroadcastLockPool() ([]byte, error)
@@ -260,6 +261,42 @@ func (lp *LockPool) UpdateLock(inDir string) (string, Version, error) {
 		return "", Version{}, err
 	}
 	fmt.Fprintf(lp.Output, "\nupdated!\n")
+
+	return lockName, Version{
+		Ref: strings.TrimSpace(ref),
+	}, nil
+}
+
+func (lp *LockPool) CheckLock(inDir string) (string, Version, error) {
+	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	if err != nil {
+		return "", Version{}, fmt.Errorf("could not read the name file of your lock: %s", err)
+	}
+	lockName := strings.TrimSpace(string(nameFileContents))
+
+	fmt.Fprintf(lp.Output, "checking lock: %s in pool: %s\n", lockName, lp.Source.Pool)
+
+	var ref string
+
+	err = lp.performRobustAction(func() (bool, error) {
+		var err error
+		ref, err = lp.LockHandler.CheckLock(lockName)
+
+		if err == ErrLockActive {
+			fmt.Fprint(lp.Output, ".")
+			return true, nil
+		}
+
+		if err != nil {
+			fmt.Fprintf(lp.Output, "failed to check the lock: %s! (err: %s) retrying...\n", lockName, err)
+			return true, nil
+		}
+		return false, nil
+	})
+
+	if err != nil {
+		return "", Version{}, err
+	}
 
 	return lockName, Version{
 		Ref: strings.TrimSpace(ref),
