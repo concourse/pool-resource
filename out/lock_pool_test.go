@@ -860,4 +860,72 @@ var _ = Describe("Lock Pool", func() {
 			})
 		})
 	})
+
+        Context("Checking a lock", func() {
+                var lockDir string
+
+                BeforeEach(func() {
+                        var err error
+                        lockDir, err = ioutil.TempDir("", "lock-dir")
+                        Ω(err).ShouldNot(HaveOccurred())
+
+                })
+
+                AfterEach(func() {
+                        err := os.RemoveAll(lockDir)
+                        Ω(err).ShouldNot(HaveOccurred())
+                })
+
+                Context("when a name file doesn't exist", func() {
+                        It("returns an error", func() {
+                                _, _, err := lockPool.CheckLock(lockDir)
+                                Ω(err).Should(HaveOccurred())
+                        })
+                })
+
+                Context("when a name file does exist", func() {
+                        BeforeEach(func() {
+                                err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+                                Ω(err).ShouldNot(HaveOccurred())
+                        })
+
+                        Context("when setup fails", func() {
+                                BeforeEach(func() {
+                                        fakeLockHandler.SetupReturns(errors.New("some-error"))
+                                })
+
+                                It("returns an error", func() {
+                                        _, _, err := lockPool.CheckLock(lockDir)
+                                        Ω(err).Should(HaveOccurred())
+                                })
+                        })
+
+                        Context("when setup succeeds", func() {
+                                Context("when the lock is unclaimed", func() {
+                                        BeforeEach(func() {
+                                                fakeLockHandler.CheckLockReturns("some-ref", nil)
+                                        })
+
+                                        It("bypasses broadcasting to the lock pool", func() {
+                                                _, _, err := lockPool.CheckLock(lockDir)
+                                                Ω(err).ShouldNot(HaveOccurred())
+
+                                                Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(1))
+                                        })
+
+                                        Context("when broadcasting succeeds", func() {
+                                                It("returns the lockname, and a version", func() {
+                                                        lockName, version, err := lockPool.CheckLock(lockDir)
+
+                                                        Ω(err).ShouldNot(HaveOccurred())
+                                                        Ω(lockName).Should(Equal("some-lock"))
+                                                        Ω(version).Should(Equal(out.Version{
+                                                                Ref: "some-ref",
+                                                        }))
+                                                })
+                                        })
+                                })
+                        })
+                })
+        })
 })

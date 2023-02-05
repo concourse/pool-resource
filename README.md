@@ -170,6 +170,21 @@ One of the following is required.
   `metadata` which should contain the name of your new lock and the contents you
   would like in the lock, respectively.
 
+* `check`: If set, we will check for an existing claimed lock in the pool and
+  wait until it becomes unclaimed.
+
+  * If there is an existing lock in claimed state: wait until lock is unclaimed
+  * If there is an existing lock in unclaimed state: no-op
+  * If no lock exists: fail
+
+  The purpose is to simply block until a given lock in a pool is moved from a
+  claimed state to an unclaimed state. This functionality allows us to build
+  dependencies between disparate pipelines without the need to `acquire` locks.
+
+  Note: the lock must be present to perform a check. In other words, a `get`
+  step to fetch metadata about the lock is necessary before a `put` step can
+  check the existence of the lock.
+
 ## Example Concourse Configuration
 
 The following example pipeline models acquiring, passing through, and releasing
