@@ -271,7 +271,7 @@ func (lp *LockPool) UpdateLock(inDir string) (string, Version, error) {
 func (lp *LockPool) CheckLock(inDir string) (string, Version, error) {
 	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
-		return "", Version{}, fmt.Errorf("could not read the name file of your lock: %s", err)
+		return "", Version{}, fmt.Errorf("could not read the file name of your lock: %s", err)
 	}
 	lockName := strings.TrimSpace(string(nameFileContents))
 
