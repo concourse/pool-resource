@@ -80,7 +80,7 @@ func (request OutRequest) Validate() []string {
 		request.Params.Claim == "" &&
 		request.Params.Update == "" &&
 		request.Params.Check == "" {
-		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, add, or add_claimed)")
+		errorMessages = append(errorMessages, "invalid payload (missing acquire, release, remove, claim, add, add_claimed, update, or check)")
 	}
 
 	return errorMessages
