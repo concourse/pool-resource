@@ -13,11 +13,13 @@ import (
 
 var ErrNoLocksAvailable = errors.New("no locks to claim")
 var ErrLockConflict = errors.New("pool state out of date")
+var ErrLockActive = errors.New("lock found")
 
 type GitLockHandler struct {
 	Source Source
 
-	dir string
+	dir       string
+	checkOnly bool
 }
 
 const falsePushString = "Everything up-to-date"
@@ -191,6 +193,28 @@ func (glh *GitLockHandler) UpdateLock(lockName string, contents []byte) (string,
 	return string(ref), nil
 }
 
+func (glh *GitLockHandler) CheckLock(lockName string) (string, error) {
+	glh.checkOnly = true
+
+	// Wait if claimed
+	_, err := ioutil.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "claimed", lockName))
+	if err == nil {
+		return "", ErrLockActive
+	}
+
+	_, err = glh.git("pull", "origin", glh.Source.Branch)
+	if err != nil {
+		return "", err
+	}
+
+	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	return string(ref), nil
+}
+
 func (glh *GitLockHandler) Setup() error {
 	var err error
 
@@ -268,6 +292,11 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 }
 
 func (glh *GitLockHandler) BroadcastLockPool() ([]byte, error) {
+	// validate if we're doing check only
+	if glh.checkOnly {
+		return []byte{}, nil
+	}
+
 	contents, err := glh.git("push", "origin", "HEAD:"+glh.Source.Branch)
 
 	// if we push and everything is up to date then someone else has made
