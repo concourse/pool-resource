@@ -11,6 +11,7 @@ RUN set -e; for pkg in $(go list ./...); do \
 	done
 
 FROM ${base_image} AS resource
+USER root
 RUN apt update && apt upgrade -y -o Dpkg::Options::="--force-confdef"
 RUN apt update && apt install -y jq git make g++ libssl-dev openssh-client
 RUN git config --global user.email "git@localhost"
