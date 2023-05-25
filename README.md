@@ -304,11 +304,10 @@ environment is consistent across any `docker` enabled platform. When the docker
 image builds, the test are run inside the docker container, on failure they
 will stop the build.
 
-Run the tests with the following commands for both `alpine` and `ubuntu` images:
+Run the tests with the following command:
 
 ```sh
-docker build -t pool-resource --target tests -f dockerfiles/alpine/Dockerfile .
-docker build -t pool-resource --target tests -f dockerfiles/ubuntu/Dockerfile --build-arg base_image=ubuntu:latest .
+docker build -t pool-resource --target tests --build-arg base_image=paketobuildpacks/run-jammy-base:latest .
 ```
 
 #### Note about the integration tests
@@ -327,11 +326,10 @@ The script clones the configured repository, (re-)creates the relevant directori
 commits and pushes the changes. If you'd rather execute the commands yourself, view the script
 contents to understand the directory structure expected by the integration tests. 
 
-Then run the tests for both `alpine` and `ubuntu` images:
+Then run the tests:
 
 ```sh
-docker build -t pool-resource --target integrationtests -f dockerfiles/alpine/Dockerfile .
-docker build -t pool-resource --build-arg base_image=concourse/golang-builder --target integrationtests -f dockerfiles/ubuntu/Dockerfile .
+docker build -t pool-resource --build-arg base_image=concourse/golang-builder --target integrationtests .
 ```
 
 ### Contributing
