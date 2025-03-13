@@ -3,13 +3,12 @@ package integration_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -23,8 +22,8 @@ var _ = Describe("In", func() {
 
 	BeforeEach(func() {
 		var err error
-		inDestination, err = ioutil.TempDir("", "in-destination")
-		gitRepo, err = ioutil.TempDir("", "git-repo")
+		inDestination, err = os.MkdirTemp("", "in-destination")
+		gitRepo, err = os.MkdirTemp("", "git-repo")
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
@@ -149,7 +148,7 @@ var _ = Describe("In", func() {
 			metaDataFile := filepath.Join(inDestination, "metadata")
 			Ω(metaDataFile).Should(BeARegularFile())
 
-			fileContents, err := ioutil.ReadFile(metaDataFile)
+			fileContents, err := os.ReadFile(metaDataFile)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(fileContents).Should(MatchJSON(`{"some":"json"}`))
@@ -157,7 +156,7 @@ var _ = Describe("In", func() {
 			lockNameFile := filepath.Join(inDestination, "name")
 			Ω(lockNameFile).Should(BeARegularFile())
 
-			fileContents, err = ioutil.ReadFile(lockNameFile)
+			fileContents, err = os.ReadFile(lockNameFile)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(strings.TrimSpace(string(fileContents))).Should(Equal("some-lock"))
@@ -298,7 +297,7 @@ var _ = Describe("In", func() {
 					metaDataFile := filepath.Join(inDestination, "metadata")
 					Ω(metaDataFile).Should(BeARegularFile())
 
-					fileContents, err := ioutil.ReadFile(metaDataFile)
+					fileContents, err := os.ReadFile(metaDataFile)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Ω(fileContents).Should(MatchJSON(`{"some":"json"}`))
@@ -306,7 +305,7 @@ var _ = Describe("In", func() {
 					lockNameFile := filepath.Join(inDestination, "name")
 					Ω(lockNameFile).Should(BeARegularFile())
 
-					fileContents, err = ioutil.ReadFile(lockNameFile)
+					fileContents, err = os.ReadFile(lockNameFile)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Ω(strings.TrimSpace(string(fileContents))).Should(Equal("some-lock"))

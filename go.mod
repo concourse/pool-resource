@@ -1,9 +1,21 @@
 module github.com/concourse/pool-resource
 
-go 1.16
+go 1.24
 
 require (
-	github.com/mitchellh/mapstructure v0.0.0-20160212031839-d2dd02622084
-	github.com/onsi/ginkgo v1.2.1-0.20150902000816-1b59c57df76e
-	github.com/onsi/gomega v0.0.0-20150831193734-6331bf5a5b5e
+	github.com/mitchellh/mapstructure v1.5.0
+	github.com/onsi/ginkgo/v2 v2.23.0
+	github.com/onsi/gomega v1.36.2
+)
+
+require (
+	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

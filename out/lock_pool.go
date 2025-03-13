@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -30,7 +30,6 @@ func NewLockPool(source Source, output io.Writer) LockPool {
 }
 
 //go:generate counterfeiter . LockHandler
-
 type LockHandler interface {
 	GrabAvailableLock() (lock string, version string, err error)
 	UnclaimLock(lock string) (version string, err error)
@@ -112,7 +111,7 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 }
 
 func (lp *LockPool) ReleaseLock(inDir string) (string, Version, error) {
-	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	nameFileContents, err := os.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
 		return "", Version{}, err
 	}
@@ -151,13 +150,13 @@ func (lp *LockPool) AddUnclaimedLock(inDir string) (string, Version, error) {
 }
 
 func (lp *LockPool) addLock(inDir string, initiallyClaimed bool) (string, Version, error) {
-	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	nameFileContents, err := os.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the name file of your lock: %s", err)
 	}
 	lockName := strings.TrimSpace(string(nameFileContents))
 
-	lockContents, err := ioutil.ReadFile(filepath.Join(inDir, "metadata"))
+	lockContents, err := os.ReadFile(filepath.Join(inDir, "metadata"))
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the metadata file of your lock: %s", err)
 	}
@@ -192,7 +191,7 @@ func (lp *LockPool) addLock(inDir string, initiallyClaimed bool) (string, Versio
 }
 
 func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
-	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	nameFileContents, err := os.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
 		return "", Version{}, err
 	}
@@ -225,13 +224,13 @@ func (lp *LockPool) RemoveLock(inDir string) (string, Version, error) {
 }
 
 func (lp *LockPool) UpdateLock(inDir string) (string, Version, error) {
-	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	nameFileContents, err := os.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the name file of your lock: %s", err)
 	}
 	lockName := strings.TrimSpace(string(nameFileContents))
 
-	lockContents, err := ioutil.ReadFile(filepath.Join(inDir, "metadata"))
+	lockContents, err := os.ReadFile(filepath.Join(inDir, "metadata"))
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the metadata file of your lock: %s", err)
 	}
@@ -269,7 +268,7 @@ func (lp *LockPool) UpdateLock(inDir string) (string, Version, error) {
 }
 
 func (lp *LockPool) CheckLock(inDir string) (string, Version, error) {
-	nameFileContents, err := ioutil.ReadFile(filepath.Join(inDir, "name"))
+	nameFileContents, err := os.ReadFile(filepath.Join(inDir, "name"))
 	if err != nil {
 		return "", Version{}, fmt.Errorf("could not read the file name of your lock: %s", err)
 	}

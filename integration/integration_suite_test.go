@@ -2,14 +2,13 @@ package integration_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/concourse/pool-resource/out"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 
@@ -134,7 +133,7 @@ func setupGitRepo(dir string) {
 }
 
 func getVersion(gitURI string, ref string) out.Version {
-	gitVersionRepo, err := ioutil.TempDir("", "git-version-repo")
+	gitVersionRepo, err := os.MkdirTemp("", "git-version-repo")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	defer os.RemoveAll(gitVersionRepo)
