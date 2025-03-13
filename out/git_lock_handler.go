@@ -3,7 +3,6 @@ package out
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -33,7 +32,7 @@ func NewGitLockHandler(source Source) *GitLockHandler {
 }
 
 func (glh *GitLockHandler) ClaimLock(lockName string) (string, error) {
-	_, err := ioutil.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed", lockName))
+	_, err := os.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed", lockName))
 	if err != nil {
 		return "", ErrNoLocksAvailable
 	}
@@ -124,7 +123,7 @@ func (glh *GitLockHandler) AddLock(lock string, contents []byte, initiallyClaime
 	pool := filepath.Join(glh.dir, glh.Source.Pool)
 	lockPath := filepath.Join(pool, claimedness, lock)
 
-	err := ioutil.WriteFile(lockPath, contents, 0555)
+	err := os.WriteFile(lockPath, contents, 0555)
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +149,7 @@ func (glh *GitLockHandler) AddLock(lock string, contents []byte, initiallyClaime
 
 func (glh *GitLockHandler) UpdateLock(lockName string, contents []byte) (string, error) {
 	// Wait if claimed
-	_, err := ioutil.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "claimed", lockName))
+	_, err := os.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "claimed", lockName))
 	if err == nil {
 		return "", ErrNoLocksAvailable
 	}
@@ -169,7 +168,7 @@ func (glh *GitLockHandler) UpdateLock(lockName string, contents []byte) (string,
 	// Add new lock
 	lockPath := filepath.Join(glh.dir, glh.Source.Pool, "unclaimed", lockName)
 
-	err = ioutil.WriteFile(lockPath, contents, 0555)
+	err = os.WriteFile(lockPath, contents, 0555)
 	if err != nil {
 		return "", err
 	}
@@ -197,7 +196,7 @@ func (glh *GitLockHandler) CheckLock(lockName string) (string, error) {
 	glh.checkOnly = true
 
 	// Wait if claimed
-	_, err := ioutil.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "claimed", lockName))
+	_, err := os.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "claimed", lockName))
 	if err == nil {
 		return "", ErrLockActive
 	}
@@ -218,7 +217,7 @@ func (glh *GitLockHandler) CheckLock(lockName string) (string, error) {
 func (glh *GitLockHandler) Setup() error {
 	var err error
 
-	glh.dir, err = ioutil.TempDir("", "pool-resource")
+	glh.dir, err = os.MkdirTemp("", "pool-resource")
 	if err != nil {
 		return err
 	}
@@ -251,9 +250,9 @@ func (glh *GitLockHandler) Setup() error {
 }
 
 func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
-	var files []os.FileInfo
+	var files []os.DirEntry
 
-	allFiles, err := ioutil.ReadDir(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed"))
+	allFiles, err := os.ReadDir(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed"))
 	if err != nil {
 		return "", "", err
 	}

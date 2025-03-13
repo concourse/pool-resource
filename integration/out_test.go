@@ -3,14 +3,13 @@ package integration_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -35,13 +34,13 @@ func itWorksWithBranch(branchName string) {
 
 		BeforeEach(func() {
 			var err error
-			gitRepo, err = ioutil.TempDir("", "git-repo")
+			gitRepo, err = os.MkdirTemp("", "git-repo")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			bareGitRepo, err = ioutil.TempDir("", "bare-git-repo")
+			bareGitRepo, err = os.MkdirTemp("", "bare-git-repo")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			sourceDir, err = ioutil.TempDir("", "source-dir")
+			sourceDir, err = os.MkdirTemp("", "source-dir")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			setupGitRepo(gitRepo)
@@ -163,7 +162,7 @@ func itWorksWithBranch(branchName string) {
 			It("moves a lock to claimed", func() {
 				version := getVersion(bareGitRepo, "origin/"+branchName)
 
-				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				reCloneRepo, err := os.MkdirTemp("", "git-version-repo")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				defer os.RemoveAll(reCloneRepo)
@@ -173,7 +172,7 @@ func itWorksWithBranch(branchName string) {
 				err = reClone.Run()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
+				claimedFiles, err := os.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(len(claimedFiles)).Should(Equal(2))
@@ -227,7 +226,7 @@ func itWorksWithBranch(branchName string) {
 					},
 				}
 
-				claimAllLocksDir, err = ioutil.TempDir("", "claiming-locks")
+				claimAllLocksDir, err = os.MkdirTemp("", "claiming-locks")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				claimAllLocks := exec.Command("bash", "-e", "-c", fmt.Sprintf(`
@@ -313,7 +312,7 @@ func itWorksWithBranch(branchName string) {
 			It("moves the specific lock to claimed", func() {
 				version := getVersion(bareGitRepo, "origin/"+branchName)
 
-				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				reCloneRepo, err := os.MkdirTemp("", "git-version-repo")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				defer os.RemoveAll(reCloneRepo)
@@ -323,7 +322,7 @@ func itWorksWithBranch(branchName string) {
 				err = reClone.Run()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				_, err = ioutil.ReadFile(filepath.Join(reCloneRepo, "lock-pool", "claimed", "some-lock"))
+				_, err = os.ReadFile(filepath.Join(reCloneRepo, "lock-pool", "claimed", "some-lock"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(outResponse).Should(Equal(out.OutResponse{
@@ -351,7 +350,7 @@ func itWorksWithBranch(branchName string) {
 				var unclaimLockDir string
 				BeforeEach(func() {
 					var err error
-					unclaimLockDir, err = ioutil.TempDir("", "claiming-locks")
+					unclaimLockDir, err = os.MkdirTemp("", "claiming-locks")
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 
@@ -421,7 +420,7 @@ func itWorksWithBranch(branchName string) {
 			JustBeforeEach(func() {
 				var err error
 
-				myLocksGetDir, err = ioutil.TempDir("", "my-locks")
+				myLocksGetDir, err = os.MkdirTemp("", "my-locks")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				jsonIn := fmt.Sprintf(`
@@ -465,7 +464,7 @@ func itWorksWithBranch(branchName string) {
 			It("removes the lock from the pool", func() {
 				version := getVersion(bareGitRepo, "origin/"+branchName)
 
-				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				reCloneRepo, err := os.MkdirTemp("", "git-version-repo")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				defer os.RemoveAll(reCloneRepo)
@@ -475,12 +474,12 @@ func itWorksWithBranch(branchName string) {
 				err = reClone.Run()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
+				claimedFiles, err := os.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(len(claimedFiles)).Should(Equal(1))
 
-				unclaimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "unclaimed"))
+				unclaimedFiles, err := os.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "unclaimed"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(len(unclaimedFiles)).Should(Equal(2))
@@ -542,7 +541,7 @@ func itWorksWithBranch(branchName string) {
 			JustBeforeEach(func() {
 				var err error
 
-				myLocksGetDir, err = ioutil.TempDir("", "my-locks")
+				myLocksGetDir, err = os.MkdirTemp("", "my-locks")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				jsonIn := fmt.Sprintf(`
@@ -586,7 +585,7 @@ func itWorksWithBranch(branchName string) {
 			It("moves the lock to unclaimed", func() {
 				version := getVersion(bareGitRepo, "origin/"+branchName)
 
-				reCloneRepo, err := ioutil.TempDir("", "git-version-repo")
+				reCloneRepo, err := os.MkdirTemp("", "git-version-repo")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				defer os.RemoveAll(reCloneRepo)
@@ -596,12 +595,12 @@ func itWorksWithBranch(branchName string) {
 				err = reClone.Run()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				claimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
+				claimedFiles, err := os.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "claimed"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(len(claimedFiles)).Should(Equal(1))
 
-				unclaimedFiles, err := ioutil.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "unclaimed"))
+				unclaimedFiles, err := os.ReadDir(filepath.Join(reCloneRepo, "lock-pool", "unclaimed"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(len(unclaimedFiles)).Should(Equal(3))
@@ -640,19 +639,19 @@ func itWorksWithBranch(branchName string) {
 			var cloneDir string
 
 			BeforeEach(func() {
-				lockToAddDir, err := ioutil.TempDir("", "lock-to-add")
+				lockToAddDir, err := os.MkdirTemp("", "lock-to-add")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cloneDir, err = ioutil.TempDir("", "clone")
+				cloneDir, err = os.MkdirTemp("", "clone")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				taskDir := filepath.Join(lockToAddDir, "task-name")
 				err = os.Mkdir(taskDir, 0755)
 
-				err = ioutil.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
+				err = os.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = ioutil.WriteFile(filepath.Join(taskDir, "name"), []byte("added-lock-name"), 0555)
+				err = os.WriteFile(filepath.Join(taskDir, "name"), []byte("added-lock-name"), 0555)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				outRequest = out.OutRequest{
@@ -692,7 +691,7 @@ func itWorksWithBranch(branchName string) {
 				lockPath := filepath.Join(cloneDir, "lock-pool", "unclaimed", "added-lock-name")
 
 				Ω(lockPath).Should(BeARegularFile())
-				contents, err := ioutil.ReadFile(lockPath)
+				contents, err := os.ReadFile(lockPath)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(string(contents)).Should(Equal("hello"))
@@ -716,19 +715,19 @@ func itWorksWithBranch(branchName string) {
 			var cloneDir string
 
 			BeforeEach(func() {
-				lockToAddDir, err := ioutil.TempDir("", "lock-to-add")
+				lockToAddDir, err := os.MkdirTemp("", "lock-to-add")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cloneDir, err = ioutil.TempDir("", "clone")
+				cloneDir, err = os.MkdirTemp("", "clone")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				taskDir := filepath.Join(lockToAddDir, "task-name")
 				err = os.Mkdir(taskDir, 0755)
 
-				err = ioutil.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
+				err = os.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = ioutil.WriteFile(filepath.Join(taskDir, "name"), []byte("claimed-lock-name"), 0555)
+				err = os.WriteFile(filepath.Join(taskDir, "name"), []byte("claimed-lock-name"), 0555)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				outRequest = out.OutRequest{
@@ -768,7 +767,7 @@ func itWorksWithBranch(branchName string) {
 				lockPath := filepath.Join(cloneDir, "lock-pool", "claimed", "claimed-lock-name")
 
 				Ω(lockPath).Should(BeARegularFile())
-				contents, err := ioutil.ReadFile(lockPath)
+				contents, err := os.ReadFile(lockPath)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(string(contents)).Should(Equal("hello"))
@@ -794,19 +793,19 @@ func itWorksWithBranch(branchName string) {
 			BeforeEach(func() {
 				var err error
 
-				lockToAddDir, err = ioutil.TempDir("", "lock-to-add")
+				lockToAddDir, err = os.MkdirTemp("", "lock-to-add")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cloneDir, err = ioutil.TempDir("", "clone")
+				cloneDir, err = os.MkdirTemp("", "clone")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				taskDir := filepath.Join(lockToAddDir, "task-name")
 				err = os.Mkdir(taskDir, 0755)
 
-				err = ioutil.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
+				err = os.WriteFile(filepath.Join(taskDir, "metadata"), []byte("hello"), 0555)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = ioutil.WriteFile(filepath.Join(taskDir, "name"), []byte("some-lock"), 0555)
+				err = os.WriteFile(filepath.Join(taskDir, "name"), []byte("some-lock"), 0555)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				outRequest = out.OutRequest{
@@ -836,7 +835,7 @@ func itWorksWithBranch(branchName string) {
 
 					Ω(os.Remove(lockNameFile)).Should(Succeed())
 
-					err := ioutil.WriteFile(lockNameFile, []byte("added-lock-name"), 0555)
+					err := os.WriteFile(lockNameFile, []byte("added-lock-name"), 0555)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					session := runOut(outRequest, lockToAddDir)
@@ -856,7 +855,7 @@ func itWorksWithBranch(branchName string) {
 					lockPath := filepath.Join(cloneDir, "lock-pool", "unclaimed", "added-lock-name")
 
 					Ω(lockPath).Should(BeARegularFile())
-					contents, err := ioutil.ReadFile(lockPath)
+					contents, err := os.ReadFile(lockPath)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Ω(string(contents)).Should(Equal("hello"))
@@ -880,7 +879,7 @@ func itWorksWithBranch(branchName string) {
 
 				BeforeEach(func() {
 					var err error
-					unclaimLockDir, err = ioutil.TempDir("", "claiming-locks")
+					unclaimLockDir, err = os.MkdirTemp("", "claiming-locks")
 					Ω(err).ShouldNot(HaveOccurred())
 
 					outRequest := out.OutRequest{
@@ -943,7 +942,7 @@ func itWorksWithBranch(branchName string) {
 					lockPath := filepath.Join(cloneDir, "lock-pool", "unclaimed", "some-lock")
 
 					Ω(lockPath).Should(BeARegularFile())
-					contents, err := ioutil.ReadFile(lockPath)
+					contents, err := os.ReadFile(lockPath)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Ω(string(contents)).Should(Equal("hello"))
@@ -969,7 +968,7 @@ func itWorksWithBranch(branchName string) {
 					lockPath := filepath.Join(cloneDir, "lock-pool", "unclaimed", "some-lock")
 
 					Ω(lockPath).Should(BeARegularFile())
-					contents, err := ioutil.ReadFile(lockPath)
+					contents, err := os.ReadFile(lockPath)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Ω(string(contents)).Should(Equal("hello"))
@@ -1002,13 +1001,13 @@ func itWorksWithBranch(branchName string) {
 
 			BeforeEach(func() {
 				var err error
-				sessionOneDir, err = ioutil.TempDir("", "session-one")
+				sessionOneDir, err = os.MkdirTemp("", "session-one")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				sessionTwoDir, err = ioutil.TempDir("", "session-two")
+				sessionTwoDir, err = os.MkdirTemp("", "session-two")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				claimLockDir, err = ioutil.TempDir("", "claiming-locks")
+				claimLockDir, err = os.MkdirTemp("", "claiming-locks")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				gitPort := GinkgoParallelNode() + 9418

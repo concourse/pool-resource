@@ -2,12 +2,11 @@ package out_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
@@ -118,7 +117,7 @@ var _ = Describe("Lock Pool", func() {
 
 		BeforeEach(func() {
 			var err error
-			lockDir, err = ioutil.TempDir("", "lock-dir")
+			lockDir, err = os.MkdirTemp("", "lock-dir")
 			Ω(err).ShouldNot(HaveOccurred())
 
 		})
@@ -137,7 +136,7 @@ var _ = Describe("Lock Pool", func() {
 
 		Context("when a name file does exist", func() {
 			BeforeEach(func() {
-				err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-remove-lock"), 0755)
+				err := os.WriteFile(filepath.Join(lockDir, "name"), []byte("some-remove-lock"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -420,7 +419,7 @@ var _ = Describe("Lock Pool", func() {
 
 		BeforeEach(func() {
 			var err error
-			lockDir, err = ioutil.TempDir("", "lock-dir")
+			lockDir, err = os.MkdirTemp("", "lock-dir")
 			Ω(err).ShouldNot(HaveOccurred())
 
 		})
@@ -439,7 +438,7 @@ var _ = Describe("Lock Pool", func() {
 
 		Context("when a name file does exist", func() {
 			BeforeEach(func() {
-				err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+				err := os.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -518,7 +517,7 @@ var _ = Describe("Lock Pool", func() {
 
 		BeforeEach(func() {
 			var err error
-			lockDir, err = ioutil.TempDir("", "lock-dir")
+			lockDir, err = os.MkdirTemp("", "lock-dir")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -536,10 +535,10 @@ var _ = Describe("Lock Pool", func() {
 
 		Context("when a name and metadata file does exist", func() {
 			BeforeEach(func() {
-				err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+				err := os.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = ioutil.WriteFile(filepath.Join(lockDir, "metadata"), []byte("lock-contents"), 0755)
+				err = os.WriteFile(filepath.Join(lockDir, "metadata"), []byte("lock-contents"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -630,7 +629,7 @@ var _ = Describe("Lock Pool", func() {
 
 		BeforeEach(func() {
 			var err error
-			lockDir, err = ioutil.TempDir("", "lock-dir")
+			lockDir, err = os.MkdirTemp("", "lock-dir")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -648,10 +647,10 @@ var _ = Describe("Lock Pool", func() {
 
 		Context("when a name and metadata file does exist", func() {
 			BeforeEach(func() {
-				err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+				err := os.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = ioutil.WriteFile(filepath.Join(lockDir, "metadata"), []byte("lock-contents"), 0755)
+				err = os.WriteFile(filepath.Join(lockDir, "metadata"), []byte("lock-contents"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -742,7 +741,7 @@ var _ = Describe("Lock Pool", func() {
 
 		BeforeEach(func() {
 			var err error
-			lockDir, err = ioutil.TempDir("", "lock-dir")
+			lockDir, err = os.MkdirTemp("", "lock-dir")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -760,10 +759,10 @@ var _ = Describe("Lock Pool", func() {
 
 		Context("when a name and metadata file does exist", func() {
 			BeforeEach(func() {
-				err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+				err := os.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = ioutil.WriteFile(filepath.Join(lockDir, "metadata"), []byte("lock-contents"), 0755)
+				err = os.WriteFile(filepath.Join(lockDir, "metadata"), []byte("lock-contents"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -866,7 +865,7 @@ var _ = Describe("Lock Pool", func() {
 
 		BeforeEach(func() {
 			var err error
-			lockDir, err = ioutil.TempDir("", "lock-dir")
+			lockDir, err = os.MkdirTemp("", "lock-dir")
 			Ω(err).ShouldNot(HaveOccurred())
 
 		})
@@ -885,7 +884,7 @@ var _ = Describe("Lock Pool", func() {
 
 		Context("when a name file does exist", func() {
 			BeforeEach(func() {
-				err := ioutil.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+				err := os.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
