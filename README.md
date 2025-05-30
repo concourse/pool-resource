@@ -307,7 +307,7 @@ will stop the build.
 Run the tests with the following command:
 
 ```sh
-docker build -t pool-resource --target tests --build-arg base_image=paketobuildpacks/run-jammy-base:latest .
+docker build -t pool-resource --target tests .
 ```
 
 #### Note about the integration tests
@@ -329,7 +329,7 @@ contents to understand the directory structure expected by the integration tests
 Then run the tests:
 
 ```sh
-docker build -t pool-resource --build-arg base_image=concourse/golang-builder --target integrationtests .
+docker build -t pool-resource --target integrationtests .
 ```
 
 ### Contributing
