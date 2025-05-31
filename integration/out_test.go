@@ -1010,7 +1010,7 @@ func itWorksWithBranch(branchName string) {
 				claimLockDir, err = os.MkdirTemp("", "claiming-locks")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				gitPort := GinkgoParallelNode() + 9418
+				gitPort := GinkgoParallelProcess() + 9418
 				gitURI := fmt.Sprintf("git://localhost:%d/", gitPort)
 
 				outRequest = out.OutRequest{
