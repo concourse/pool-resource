@@ -12,7 +12,7 @@ ENV GOARCH=$TARGETARCH
 WORKDIR /src
 COPY . .
 RUN go mod download
-RUN go build -o /assets/out github.com/concourse/pool-resource/cmd/out
+RUN go build -o /assets/out ./cmd/out
 RUN set -e; for pkg in $(go list ./...); do \
 		go test -o "/tests/$(basename $pkg).test" -c $pkg; \
 	done
