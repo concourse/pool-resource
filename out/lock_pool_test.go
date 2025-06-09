@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
-	"github.com/concourse/pool-resource/out"
-	fakes "github.com/concourse/pool-resource/out/fakes"
+	"github.com/ebroberson/pool-resource/out"
+	fakes "github.com/ebroberson/pool-resource/out/outfakes"
 )
 
 var _ = Describe("Lock Pool", func() {
@@ -915,6 +915,74 @@ var _ = Describe("Lock Pool", func() {
 					Context("when broadcasting succeeds", func() {
 						It("returns the lockname, and a version", func() {
 							lockName, version, err := lockPool.CheckLock(lockDir)
+
+							Ω(err).ShouldNot(HaveOccurred())
+							Ω(lockName).Should(Equal("some-lock"))
+							Ω(version).Should(Equal(out.Version{
+								Ref: "some-ref",
+							}))
+						})
+					})
+				})
+			})
+		})
+	})
+
+	Context("Checking an unclaimed lock", func() {
+		var lockDir string
+
+		BeforeEach(func() {
+			var err error
+			lockDir, err = os.MkdirTemp("", "lock-dir")
+			Ω(err).ShouldNot(HaveOccurred())
+
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(lockDir)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		Context("when a name file doesn't exist", func() {
+			It("returns an error", func() {
+				_, _, err := lockPool.CheckUnclaimedLock(lockDir)
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when a name file does exist", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(filepath.Join(lockDir, "name"), []byte("some-lock"), 0755)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			Context("when setup fails", func() {
+				BeforeEach(func() {
+					fakeLockHandler.SetupReturns(errors.New("some-error"))
+				})
+
+				It("returns an error", func() {
+					_, _, err := lockPool.CheckUnclaimedLock(lockDir)
+					Ω(err).Should(HaveOccurred())
+				})
+			})
+
+			Context("when setup succeeds", func() {
+				Context("when the lock is claimed", func() {
+					BeforeEach(func() {
+						fakeLockHandler.CheckUnclaimedLockReturns("some-ref", nil)
+					})
+
+					It("bypasses broadcasting to the lock pool", func() {
+						_, _, err := lockPool.CheckUnclaimedLock(lockDir)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(fakeLockHandler.BroadcastLockPoolCallCount()).Should(Equal(1))
+					})
+
+					Context("when broadcasting succeeds", func() {
+						It("returns the lockname, and a version", func() {
+							lockName, version, err := lockPool.CheckUnclaimedLock(lockDir)
 
 							Ω(err).ShouldNot(HaveOccurred())
 							Ω(lockName).Should(Equal("some-lock"))

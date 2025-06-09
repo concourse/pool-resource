@@ -3,7 +3,7 @@ package out_test
 import (
 	"encoding/json"
 
-	. "github.com/concourse/pool-resource/out"
+	. "github.com/ebroberson/pool-resource/out"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

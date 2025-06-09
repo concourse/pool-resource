@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/concourse/pool-resource/out"
+	"github.com/ebroberson/pool-resource/out"
 )
 
 func main() {
@@ -20,6 +20,7 @@ func main() {
 	}
 
 	sourceDir := os.Args[1]
+	println("sourceDir: " + sourceDir)
 
 	var request out.OutRequest
 	err := json.NewDecoder(os.Stdin).Decode(&request)
@@ -87,6 +88,7 @@ func main() {
 	}
 
 	if request.Params.Claim != "" {
+		println("EBR: performing claim...")
 		lock = request.Params.Claim
 		version, err = lockPool.ClaimLock(lock)
 		if err != nil {
@@ -107,6 +109,15 @@ func main() {
 		lock, version, err = lockPool.CheckLock(lockPath)
 		if err != nil {
 			fatal("checking lock", err)
+		}
+	}
+
+	if request.Params.CheckUnclaimed != "" {
+		lock = request.Params.CheckUnclaimed
+		lockPath := filepath.Join(sourceDir, request.Params.CheckUnclaimed)
+		lock, version, err = lockPool.CheckUnclaimedLock(lockPath)
+		if err != nil {
+			fatal("checking unclaimed lock", err)
 		}
 	}
 
