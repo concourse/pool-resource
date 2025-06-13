@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ebroberson/pool-resource/out"
+	"github.com/concourse/pool-resource/out"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -27,7 +27,7 @@ var _ = BeforeSuite(func() {
 	if _, err := os.Stat("/opt/go/out"); err == nil {
 		outPath = "/opt/go/out"
 	} else {
-		outPath, err = gexec.Build("github.com/ebroberson/pool-resource/cmd/out")
+		outPath, err = gexec.Build("github.com/concourse/pool-resource/cmd/out")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 

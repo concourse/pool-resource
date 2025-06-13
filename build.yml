@@ -4,14 +4,14 @@ platform: linux
 image_resource: 
   type: docker-image
   source:
-    repository: ebroberson/pool-resource-test
+    repository: concourse/pool-resource-test
     
 inputs:
 - name: pool-resource
-  path: gopath/src/github.com/ebroberson/pool-resource
+  path: gopath/src/github.com/concourse/pool-resource
 
 outputs:
 - name: built-resource
 
 run:
-  path: gopath/src/github.com/ebroberson/pool-resource/ci/build
+  path: gopath/src/github.com/concourse/pool-resource/ci/build

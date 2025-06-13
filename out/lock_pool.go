@@ -48,18 +48,14 @@ type LockHandler interface {
 func (lp *LockPool) ClaimLock(lock string) (Version, error) {
 	var ref string
 
-	fmt.Fprintf(lp.Output, "EBR: claim lock 1\n")
 	fmt.Fprintf(lp.Output, "claiming lock on: %s\n", lp.Source.Pool)
 	fmt.Fprintf(lp.Output, "waiting for lock\n")
 
 	err := lp.performRobustAction(func() (bool, error) {
-		fmt.Fprintf(lp.Output, "EBR: claim lock 2\n")
 		var err error
 
-		fmt.Fprintf(lp.Output, "EBR: claim lock 3\n")
 		ref, err = lp.LockHandler.ClaimLock(lock)
 
-		fmt.Fprintf(lp.Output, "EBR: claim lock 4\n")
 		if err == ErrNoLocksAvailable {
 			fmt.Fprint(lp.Output, ".")
 			return true, nil
@@ -72,7 +68,6 @@ func (lp *LockPool) ClaimLock(lock string) (Version, error) {
 
 		return false, nil
 	})
-	fmt.Fprintf(lp.Output, "EBR: claim lock 5\n")
 	fmt.Fprintf(lp.Output, "\nclaimed!\n")
 
 	return Version{
@@ -348,23 +343,19 @@ func (lp *LockPool) CheckUnclaimedLock(inDir string) (string, Version, error) {
 }
 
 func (lp *LockPool) performRobustAction(action func() (bool, error)) error {
-	fmt.Fprintf(lp.Output, "EBR: performRobustAction 1\n")
 	err := lp.LockHandler.Setup()
-	fmt.Fprintf(lp.Output, "EBR: performRobustAction 2\n")
 	if err != nil {
 		return err
 	}
 
 	var gitOutput []byte
 	unexpectedErrorRetry := 0
-	fmt.Fprintf(lp.Output, "EBR: performRobustAction 3\n")
 	for unexpectedErrorRetry < 5 {
 		err = lp.LockHandler.ResetLock()
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprint(lp.Output, "EBR: performing supplied action\n")
 		retry, err := action()
 
 		if err != nil {
@@ -393,7 +384,6 @@ func (lp *LockPool) performRobustAction(action func() (bool, error)) error {
 
 		break
 	}
-	fmt.Fprintf(lp.Output, "EBR: performRobustAction 4\n")
 
 	if unexpectedErrorRetry == 5 {
 		return errors.New("too-many-unexpected-errors")
