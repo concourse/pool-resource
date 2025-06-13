@@ -29,7 +29,9 @@ func NewLockPool(source Source, output io.Writer) LockPool {
 	return lockPool
 }
 
-//go:generate counterfeiter . LockHandler
+//go:generate go tool counterfeiter -generate
+
+//counterfeiter:generate -o ./fakes . LockHandler
 type LockHandler interface {
 	GrabAvailableLock() (lock string, version string, err error)
 	UnclaimLock(lock string) (version string, err error)
