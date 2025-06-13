@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ebroberson/pool-resource/out"
+	"github.com/concourse/pool-resource/out"
 )
 
 func main() {
@@ -20,7 +20,6 @@ func main() {
 	}
 
 	sourceDir := os.Args[1]
-	println("sourceDir: " + sourceDir)
 
 	var request out.OutRequest
 	err := json.NewDecoder(os.Stdin).Decode(&request)
@@ -88,7 +87,6 @@ func main() {
 	}
 
 	if request.Params.Claim != "" {
-		println("EBR: performing claim...")
 		lock = request.Params.Claim
 		version, err = lockPool.ClaimLock(lock)
 		if err != nil {

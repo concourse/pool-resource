@@ -4,7 +4,7 @@ package outfakes
 import (
 	"sync"
 
-	"github.com/ebroberson/pool-resource/out"
+	"github.com/concourse/pool-resource/out"
 )
 
 type FakeLockHandler struct {

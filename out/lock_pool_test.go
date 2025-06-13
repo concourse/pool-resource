@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
-	"github.com/ebroberson/pool-resource/out"
-	fakes "github.com/ebroberson/pool-resource/out/outfakes"
+	"github.com/concourse/pool-resource/out"
+	fakes "github.com/concourse/pool-resource/out/outfakes"
 )
 
 var _ = Describe("Lock Pool", func() {

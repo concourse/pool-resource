@@ -32,7 +32,6 @@ func NewGitLockHandler(source Source) *GitLockHandler {
 }
 
 func (glh *GitLockHandler) ClaimLock(lockName string) (string, error) {
-	fmt.Fprintf(os.Stderr, "GitLockHandler.ClaimLock: %s, %s, %s", glh.dir, glh.Source.Pool, lockName)
 	_, err := os.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed", lockName))
 	if err != nil {
 		return "", ErrNoLocksAvailable
@@ -238,7 +237,6 @@ func (glh *GitLockHandler) CheckUnclaimedLock(lockName string) (string, error) {
 }
 
 func (glh *GitLockHandler) Setup() error {
-	fmt.Fprintf(os.Stderr, "EBR: GitLockHandler.Setup 1\n")
 	var err error
 
 	glh.dir, err = os.MkdirTemp("", "pool-resource")
@@ -246,16 +244,12 @@ func (glh *GitLockHandler) Setup() error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "EBR: GitLockHandler.Setup 2\n")
 	cmd := exec.Command("git", "clone", "--branch", glh.Source.Branch, glh.Source.URI, glh.dir)
-	fmt.Fprintf(os.Stderr, "EBR: GitLockHandler.Setup 3\n")
-	fmt.Fprintf(os.Stderr, "EBR: branch %s uri %s dir %s\n", glh.Source.Branch, glh.Source.URI, glh.dir)
-	err = cmd.Run() // this one right here officer
+	err = cmd.Run()
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "EBR: GitLockHandler.Setup 4\n")
 	_, err = glh.git("config", "user.name")
 	if err != nil {
 		// hardcode git user.name if not already set in git_config
@@ -265,7 +259,6 @@ func (glh *GitLockHandler) Setup() error {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "EBR: GitLockHandler.Setup 5\n")
 	_, err = glh.git("config", "user.email")
 	if err != nil {
 		// hardcode git user.email if not already set in git_config

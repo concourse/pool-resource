@@ -14,7 +14,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 
-	"github.com/ebroberson/pool-resource/out"
+	"github.com/concourse/pool-resource/out"
 )
 
 var _ = Describe("Out", func() {
