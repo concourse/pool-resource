@@ -29,7 +29,9 @@ func NewLockPool(source Source, output io.Writer) LockPool {
 	return lockPool
 }
 
-//go:generate counterfeiter . LockHandler
+//go:generate go tool counterfeiter -generate
+
+//counterfeiter:generate -o ./fakes . LockHandler
 type LockHandler interface {
 	GrabAvailableLock() (lock string, version string, err error)
 	UnclaimLock(lock string) (version string, err error)
@@ -38,6 +40,7 @@ type LockHandler interface {
 	ClaimLock(lock string) (version string, err error)
 	UpdateLock(lock string, contents []byte) (version string, err error)
 	CheckLock(lock string) (version string, err error)
+	CheckUnclaimedLock(lock string) (version string, err error)
 
 	Setup() error
 	BroadcastLockPool() ([]byte, error)
@@ -282,6 +285,43 @@ func (lp *LockPool) CheckLock(inDir string) (string, Version, error) {
 	err = lp.performRobustAction(func() (bool, error) {
 		var err error
 		ref, err = lp.LockHandler.CheckLock(lockName)
+
+		if err == ErrLockActive {
+			fmt.Fprint(lp.Output, ".")
+			return true, nil
+		}
+
+		if err != nil {
+			fmt.Fprintf(lp.Output, "failed to check the lock: %s! (err: %s) retrying...\n", lockName, err)
+			return true, nil
+		}
+		return false, nil
+	})
+
+	if err != nil {
+		return "", Version{}, err
+	}
+
+	return lockName, Version{
+		Ref: strings.TrimSpace(ref),
+	}, nil
+}
+
+func (lp *LockPool) CheckUnclaimedLock(inDir string) (string, Version, error) {
+	nameFileContents, err := os.ReadFile(filepath.Join(inDir, "name"))
+	if err != nil {
+		return "", Version{}, fmt.Errorf("could not read the file name of your lock: %s", err)
+	}
+	lockName := strings.TrimSpace(string(nameFileContents))
+
+	fmt.Fprintf(lp.Output, "checking lock: %s in pool: %s\n", lockName, lp.Source.Pool)
+	fmt.Fprintf(lp.Output, "waiting for lock to become claimed\n")
+
+	var ref string
+
+	err = lp.performRobustAction(func() (bool, error) {
+		var err error
+		ref, err = lp.LockHandler.CheckUnclaimedLock(lockName)
 
 		if err == ErrLockActive {
 			fmt.Fprint(lp.Output, ".")

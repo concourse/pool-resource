@@ -214,6 +214,28 @@ func (glh *GitLockHandler) CheckLock(lockName string) (string, error) {
 	return string(ref), nil
 }
 
+func (glh *GitLockHandler) CheckUnclaimedLock(lockName string) (string, error) {
+	glh.checkOnly = true
+
+	// Wait if unclaimed
+	_, err := os.ReadFile(filepath.Join(glh.dir, glh.Source.Pool, "unclaimed", lockName))
+	if err == nil {
+		return "", ErrLockActive
+	}
+
+	_, err = glh.git("pull", "origin", glh.Source.Branch)
+	if err != nil {
+		return "", err
+	}
+
+	ref, err := glh.git("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	return string(ref), nil
+}
+
 func (glh *GitLockHandler) Setup() error {
 	var err error
 

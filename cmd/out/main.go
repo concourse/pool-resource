@@ -110,6 +110,15 @@ func main() {
 		}
 	}
 
+	if request.Params.CheckUnclaimed != "" {
+		lock = request.Params.CheckUnclaimed
+		lockPath := filepath.Join(sourceDir, request.Params.CheckUnclaimed)
+		lock, version, err = lockPool.CheckUnclaimedLock(lockPath)
+		if err != nil {
+			fatal("checking unclaimed lock", err)
+		}
+	}
+
 	err = json.NewEncoder(os.Stdout).Encode(out.OutResponse{
 		Version: version,
 		Metadata: []out.MetadataPair{

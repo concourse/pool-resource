@@ -132,7 +132,7 @@ func itWorksWithBranch(branchName string) {
 				It("complains about it", func() {
 					errorMessages := string(session.Err.Contents())
 
-					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, claim, add, add_claimed, update, or check)"))
+					Ω(errorMessages).Should(ContainSubstring("invalid payload (missing acquire, release, remove, claim, add, add_claimed, update, check, or check_unclaimed"))
 				})
 			})
 		})
