@@ -351,9 +351,14 @@ func (glh *GitLockHandler) messagePrefix() string {
 	jobName := os.Getenv("BUILD_JOB_NAME")
 	pipelineName := os.Getenv("BUILD_PIPELINE_NAME")
 	teamName := os.Getenv("BUILD_TEAM_NAME")
+	instanceVars := os.Getenv("BUILD_PIPELINE_INSTANCE_VARS")
 
 	if buildName != "" && jobName != "" && pipelineName != "" && teamName != "" {
-		return fmt.Sprintf("%s/%s/%s build %s ", teamName, pipelineName, jobName, buildName)
+		prefix := fmt.Sprintf("%s/%s/%s build %s", teamName, pipelineName, jobName, buildName)
+		if instanceVars != "" {
+			prefix += fmt.Sprintf(" %s", instanceVars)
+		}
+		return prefix + " "
 	} else if buildID != "" {
 		return fmt.Sprintf("one-off build %s ", buildID)
 	}
