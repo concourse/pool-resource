@@ -323,4 +323,90 @@ var _ = Describe("In", func() {
 			})
 		})
 	})
+
+	Context("when HEAD commit is about a different pool", func() {
+		var headCommitSHA string
+
+		BeforeEach(func() {
+			setupGitRepo(gitRepo)
+			
+			// Create a second pool and make changes to both pools
+			setupMultiPoolRepo := exec.Command("bash", "-e", "-c", `
+				# Create second pool structure
+				mkdir -p other-pool/claimed other-pool/unclaimed
+				echo '{"other":"data"}' > other-pool/unclaimed/other-lock
+				git add other-pool/
+				git commit -m 'setup other pool'
+				
+				# Move lock in our target pool (this is the commit we want to test)
+				git mv lock-pool/unclaimed/some-lock lock-pool/claimed/some-lock
+				git commit -m 'claiming some-lock in target pool'
+				
+				# Make a more recent commit in different pool (becomes HEAD)
+				git mv other-pool/unclaimed/other-lock other-pool/claimed/other-lock
+				git commit -m 'claiming other-lock in different pool'
+				
+				# Output the SHA of the HEAD commit (the one about different pool)
+				git rev-parse HEAD
+			`)
+			setupMultiPoolRepo.Dir = gitRepo
+			setupMultiPoolRepo.Stderr = GinkgoWriter
+			setupMultiPoolRepo.Stdout = GinkgoWriter
+			
+			session, err := gexec.Start(setupMultiPoolRepo, GinkgoWriter, GinkgoWriter)
+			Ω(err).ShouldNot(HaveOccurred())
+			<-session.Exited
+			Ω(session.ExitCode()).Should(BeZero())
+			
+			// Extract SHA from output (last line)
+			output := strings.TrimSpace(string(session.Out.Contents()))
+			lines := strings.Split(output, "\n")
+			headCommitSHA = strings.TrimSpace(lines[len(lines)-1])
+		})
+
+		It("finds the correct lock file for the target pool despite HEAD being about different pool", func() {
+			jsonIn := fmt.Sprintf(`
+				{
+					"source": {
+						"uri": "%s",
+						"branch": "master",
+						"pool": "lock-pool"
+					},
+					"version": {"ref": "%s"}
+				}
+			`, gitRepo, headCommitSHA)
+
+			session := runIn(jsonIn, inDestination, 0)
+
+			err := json.Unmarshal(session.Out.Contents(), &output)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Verify the name file contains the correct lock name
+			lockNameFile := filepath.Join(inDestination, "name")
+			Ω(lockNameFile).Should(BeARegularFile())
+
+			fileContents, err := os.ReadFile(lockNameFile)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(strings.TrimSpace(string(fileContents))).Should(Equal("some-lock"))
+
+			// Verify metadata file is created with correct content
+			metaDataFile := filepath.Join(inDestination, "metadata")
+			Ω(metaDataFile).Should(BeARegularFile())
+
+			fileContents, err = os.ReadFile(metaDataFile)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(fileContents).Should(MatchJSON(`{"some":"json"}`))
+
+			// Verify the response structure
+			Ω(output).Should(Equal(inResponse{
+				Version: version{
+					Ref: headCommitSHA,
+				},
+				Metadata: []metadataPair{
+					{Name: "lock_name", Value: "some-lock"},
+					{Name: "pool_name", Value: "lock-pool"},
+				},
+			}))
+		})
+	})
 })
