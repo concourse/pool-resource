@@ -195,7 +195,7 @@ func itWorksWithBranch(branchName string) {
 			})
 
 			It("commits with a descriptive message", func() {
-				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log := exec.Command("git", "log", "-1", outResponse.Version.Ref)
 				log.Dir = bareGitRepo
 
 				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -203,7 +203,8 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 claiming: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("claiming: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 			})
 		})
 
@@ -258,11 +259,11 @@ func itWorksWithBranch(branchName string) {
 			It("retries until a lock can be claimed", func() {
 				Consistently(session, 2*time.Second).ShouldNot(gexec.Exit(0))
 
-				releaseLock := exec.Command("bash", "-e", "-c", fmt.Sprint(`
+				releaseLock := exec.Command("bash", "-e", "-c", `
 				git mv lock-pool/claimed/some-lock lock-pool/unclaimed/some-lock
 				git commit -am "unclaiming some-lock"
 				git push
-			`))
+			`)
 
 				releaseLock.Dir = claimAllLocksDir
 
@@ -335,7 +336,7 @@ func itWorksWithBranch(branchName string) {
 			})
 
 			It("commits with a descriptive message", func() {
-				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log := exec.Command("git", "log", "-1", outResponse.Version.Ref)
 				log.Dir = bareGitRepo
 
 				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -343,7 +344,8 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 claiming: some-lock"))
+				Ω(session).Should(gbytes.Say("claiming: some-lock"))
+				Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 			})
 
 			Context("when the specific lock has already been claimed", func() {
@@ -501,7 +503,7 @@ func itWorksWithBranch(branchName string) {
 			})
 
 			It("commits with a descriptive message", func() {
-				log := exec.Command("git", "log", "--oneline", "-1", outRemoveResponse.Version.Ref)
+				log := exec.Command("git", "log", "-1", outRemoveResponse.Version.Ref)
 				log.Dir = bareGitRepo
 
 				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -509,7 +511,8 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 removing: " + outRemoveResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("removing: " + outRemoveResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 			})
 		})
 
@@ -622,7 +625,7 @@ func itWorksWithBranch(branchName string) {
 			})
 
 			It("commits with a descriptive message", func() {
-				log := exec.Command("git", "log", "--oneline", "-1", outReleaseResponse.Version.Ref)
+				log := exec.Command("git", "log", "-1", outReleaseResponse.Version.Ref)
 				log.Dir = bareGitRepo
 
 				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -630,7 +633,8 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 unclaiming: " + outReleaseResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("unclaiming: " + outReleaseResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 			})
 		})
 
@@ -698,7 +702,7 @@ func itWorksWithBranch(branchName string) {
 			})
 
 			It("commits with a descriptive message", func() {
-				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log := exec.Command("git", "log", "-1", outResponse.Version.Ref)
 				log.Dir = bareGitRepo
 
 				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -706,7 +710,8 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 adding unclaimed: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("adding unclaimed: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 			})
 		})
 
@@ -774,7 +779,7 @@ func itWorksWithBranch(branchName string) {
 			})
 
 			It("commits with a descriptive message", func() {
-				log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+				log := exec.Command("git", "log", "-1", outResponse.Version.Ref)
 				log.Dir = bareGitRepo
 
 				session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -782,7 +787,8 @@ func itWorksWithBranch(branchName string) {
 
 				<-session.Exited
 
-				Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 adding claimed: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("adding claimed: " + outResponse.Metadata[0].Value))
+				Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 			})
 		})
 
@@ -862,7 +868,7 @@ func itWorksWithBranch(branchName string) {
 				})
 
 				It("commits with a descriptive message", func() {
-					log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+					log := exec.Command("git", "log", "-1", outResponse.Version.Ref)
 					log.Dir = bareGitRepo
 
 					session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -870,7 +876,8 @@ func itWorksWithBranch(branchName string) {
 
 					<-session.Exited
 
-					Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 adding unclaimed: " + outResponse.Metadata[0].Value))
+					Ω(session).Should(gbytes.Say("adding unclaimed: " + outResponse.Metadata[0].Value))
+					Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 				})
 			})
 
@@ -975,7 +982,7 @@ func itWorksWithBranch(branchName string) {
 				})
 
 				It("commits with a descriptive message", func() {
-					log := exec.Command("git", "log", "--oneline", "-1", outResponse.Version.Ref)
+					log := exec.Command("git", "log", "-1", outResponse.Version.Ref)
 					log.Dir = bareGitRepo
 
 					session, err := gexec.Start(log, GinkgoWriter, GinkgoWriter)
@@ -983,7 +990,8 @@ func itWorksWithBranch(branchName string) {
 
 					<-session.Exited
 
-					Ω(session).Should(gbytes.Say("team-name/pipeline-name/job-name build 42 updating: " + outResponse.Metadata[0].Value))
+					Ω(session).Should(gbytes.Say("updating: " + outResponse.Metadata[0].Value))
+					Ω(session).Should(gbytes.Say("Build URL: http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543"))
 				})
 			})
 		})

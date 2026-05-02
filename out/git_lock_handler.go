@@ -42,7 +42,7 @@ func (glh *GitLockHandler) ClaimLock(lockName string) (string, error) {
 		return "", err
 	}
 
-	commitMessage := fmt.Sprintf(glh.messagePrefix()+"claiming: %s", lockName)
+	commitMessage := fmt.Sprintf("claiming: %s\n%s", lockName, glh.buildUrl())
 	_, err = glh.git("commit", "-m", commitMessage)
 	if err != nil {
 		return "", err
@@ -64,7 +64,7 @@ func (glh *GitLockHandler) RemoveLock(lockName string) (string, error) {
 		return "", err
 	}
 
-	_, err = glh.git("commit", "-m", glh.messagePrefix()+fmt.Sprintf("removing: %s", lockName))
+	_, err = glh.git("commit", "-m", fmt.Sprintf("removing: %s\n%s", lockName, glh.buildUrl()))
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +85,7 @@ func (glh *GitLockHandler) UnclaimLock(lockName string) (string, error) {
 		return "", err
 	}
 
-	_, err = glh.git("commit", "-m", glh.messagePrefix()+fmt.Sprintf("unclaiming: %s", lockName))
+	_, err = glh.git("commit", "-m", fmt.Sprintf("unclaiming: %s\n%s", lockName, glh.buildUrl()))
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +133,7 @@ func (glh *GitLockHandler) AddLock(lock string, contents []byte, initiallyClaime
 		return "", err
 	}
 
-	commitMessage := glh.messagePrefix() + fmt.Sprintf("adding %s: %s", claimedness, lock)
+	commitMessage := fmt.Sprintf("adding %s: %s\n%s", claimedness, lock, glh.buildUrl())
 	_, err = glh.git("commit", lockPath, "-m", commitMessage)
 	if err != nil {
 		return "", err
@@ -178,7 +178,7 @@ func (glh *GitLockHandler) UpdateLock(lockName string, contents []byte) (string,
 		return "", err
 	}
 
-	commitMessage := glh.messagePrefix() + fmt.Sprintf("%s: %s", operation, lockName)
+	commitMessage := fmt.Sprintf("%s: %s\n%s", operation, lockName, glh.buildUrl())
 	_, err = glh.git("commit", lockPath, "-m", commitMessage)
 	if err != nil {
 		return "", err
@@ -298,7 +298,7 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 		return "", "", err
 	}
 
-	commitMessage := fmt.Sprintf(glh.messagePrefix()+"claiming: %s", name)
+	commitMessage := fmt.Sprintf("claiming: %s\n%s", name, glh.buildUrl())
 	_, err = glh.git("commit", "-m", commitMessage)
 	if err != nil {
 		return "", "", err
@@ -345,22 +345,7 @@ func (glh *GitLockHandler) git(args ...string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func (glh *GitLockHandler) messagePrefix() string {
-	buildID := os.Getenv("BUILD_ID")
-	buildName := os.Getenv("BUILD_NAME")
-	jobName := os.Getenv("BUILD_JOB_NAME")
-	pipelineName := os.Getenv("BUILD_PIPELINE_NAME")
-	teamName := os.Getenv("BUILD_TEAM_NAME")
-	instanceVars := os.Getenv("BUILD_PIPELINE_INSTANCE_VARS")
-
-	if buildName != "" && jobName != "" && pipelineName != "" && teamName != "" {
-		if instanceVars != "" {
-			return fmt.Sprintf("%s/%s/%s/%s build %s ", teamName, pipelineName, instanceVars, jobName, buildName)
-		}
-		return fmt.Sprintf("%s/%s/%s build %s ", teamName, pipelineName, jobName, buildName)
-	} else if buildID != "" {
-		return fmt.Sprintf("one-off build %s ", buildID)
-	}
-
-	return ""
+func (glh *GitLockHandler) buildUrl() string {
+	buildUrl := os.Getenv("BUILD_URL")
+	return fmt.Sprintf("Build URL: %s ", buildUrl)
 }
