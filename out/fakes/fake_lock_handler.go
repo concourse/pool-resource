@@ -23,16 +23,16 @@ type FakeLockHandler struct {
 		result1 string
 		result2 error
 	}
-	BroadcastLockPoolStub        func() ([]byte, error)
+	BroadcastLockPoolStub        func() (string, error)
 	broadcastLockPoolMutex       sync.RWMutex
 	broadcastLockPoolArgsForCall []struct {
 	}
 	broadcastLockPoolReturns struct {
-		result1 []byte
+		result1 string
 		result2 error
 	}
 	broadcastLockPoolReturnsOnCall map[int]struct {
-		result1 []byte
+		result1 string
 		result2 error
 	}
 	CheckLockStub        func(string) (string, error)
@@ -223,7 +223,7 @@ func (fake *FakeLockHandler) AddLockReturnsOnCall(i int, result1 string, result2
 	}{result1, result2}
 }
 
-func (fake *FakeLockHandler) BroadcastLockPool() ([]byte, error) {
+func (fake *FakeLockHandler) BroadcastLockPool() (string, error) {
 	fake.broadcastLockPoolMutex.Lock()
 	ret, specificReturn := fake.broadcastLockPoolReturnsOnCall[len(fake.broadcastLockPoolArgsForCall)]
 	fake.broadcastLockPoolArgsForCall = append(fake.broadcastLockPoolArgsForCall, struct {
@@ -247,34 +247,34 @@ func (fake *FakeLockHandler) BroadcastLockPoolCallCount() int {
 	return len(fake.broadcastLockPoolArgsForCall)
 }
 
-func (fake *FakeLockHandler) BroadcastLockPoolCalls(stub func() ([]byte, error)) {
+func (fake *FakeLockHandler) BroadcastLockPoolCalls(stub func() (string, error)) {
 	fake.broadcastLockPoolMutex.Lock()
 	defer fake.broadcastLockPoolMutex.Unlock()
 	fake.BroadcastLockPoolStub = stub
 }
 
-func (fake *FakeLockHandler) BroadcastLockPoolReturns(result1 []byte, result2 error) {
+func (fake *FakeLockHandler) BroadcastLockPoolReturns(result1 string, result2 error) {
 	fake.broadcastLockPoolMutex.Lock()
 	defer fake.broadcastLockPoolMutex.Unlock()
 	fake.BroadcastLockPoolStub = nil
 	fake.broadcastLockPoolReturns = struct {
-		result1 []byte
+		result1 string
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLockHandler) BroadcastLockPoolReturnsOnCall(i int, result1 []byte, result2 error) {
+func (fake *FakeLockHandler) BroadcastLockPoolReturnsOnCall(i int, result1 string, result2 error) {
 	fake.broadcastLockPoolMutex.Lock()
 	defer fake.broadcastLockPoolMutex.Unlock()
 	fake.BroadcastLockPoolStub = nil
 	if fake.broadcastLockPoolReturnsOnCall == nil {
 		fake.broadcastLockPoolReturnsOnCall = make(map[int]struct {
-			result1 []byte
+			result1 string
 			result2 error
 		})
 	}
 	fake.broadcastLockPoolReturnsOnCall[i] = struct {
-		result1 []byte
+		result1 string
 		result2 error
 	}{result1, result2}
 }

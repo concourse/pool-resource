@@ -43,7 +43,7 @@ type LockHandler interface {
 	CheckUnclaimedLock(lock string) (version string, err error)
 
 	Setup() error
-	BroadcastLockPool() ([]byte, error)
+	BroadcastLockPool() (string, error)
 	ResetLock() error
 }
 
@@ -70,6 +70,11 @@ func (lp *LockPool) ClaimLock(lock string) (Version, error) {
 
 		return false, nil
 	})
+
+	if err != nil {
+		return Version{}, err
+	}
+
 	fmt.Fprintf(lp.Output, "\nclaimed!\n")
 
 	return Version{
@@ -106,6 +111,7 @@ func (lp *LockPool) AcquireLock() (string, Version, error) {
 	if err != nil {
 		return "", Version{}, err
 	}
+
 	fmt.Fprintf(lp.Output, "\nacquired!\n")
 
 	return lock, Version{
@@ -263,6 +269,7 @@ func (lp *LockPool) UpdateLock(inDir string) (string, Version, error) {
 	if err != nil {
 		return "", Version{}, err
 	}
+
 	fmt.Fprintf(lp.Output, "\nupdated!\n")
 
 	return lockName, Version{
@@ -347,21 +354,20 @@ func (lp *LockPool) CheckUnclaimedLock(inDir string) (string, Version, error) {
 func (lp *LockPool) performRobustAction(action func() (bool, error)) error {
 	err := lp.LockHandler.Setup()
 	if err != nil {
-		return err
+		return fmt.Errorf("setup: %w", err)
 	}
 
-	var gitOutput []byte
 	unexpectedErrorRetry := 0
 	for unexpectedErrorRetry < 5 {
 		err = lp.LockHandler.ResetLock()
 		if err != nil {
-			return err
+			return fmt.Errorf("reset lock: %w", err)
 		}
 
 		retry, err := action()
 
 		if err != nil {
-			return err
+			return fmt.Errorf("action: %w", err)
 		}
 
 		if retry {
@@ -369,7 +375,7 @@ func (lp *LockPool) performRobustAction(action func() (bool, error)) error {
 			continue
 		}
 
-		gitOutput, err = lp.LockHandler.BroadcastLockPool()
+		gitOutput, err := lp.LockHandler.BroadcastLockPool()
 
 		if err == ErrLockConflict {
 			fmt.Fprint(lp.Output, ".")
