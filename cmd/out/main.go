@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,9 +10,6 @@ import (
 )
 
 func main() {
-
-	rand.Seed(time.Now().UnixNano())
-
 	if len(os.Args) < 2 {
 		println("usage: " + os.Args[0] + " <source>")
 		os.Exit(1)

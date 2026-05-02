@@ -79,11 +79,7 @@ func runOut(request out.OutRequest, sourceDir string) *gexec.Session {
 
 	outCmd.Env = append(
 		os.Environ(),
-		"BUILD_ID=1234",
-		"BUILD_NAME=42",
-		"BUILD_JOB_NAME=job-name",
-		"BUILD_PIPELINE_NAME=pipeline-name",
-		"BUILD_TEAM_NAME=team-name",
+		"BUILD_URL=http://example.com/teams/team-name/pipelines/pipeline-name/jobs/job-name/builds/6543",
 	)
 
 	stdin, err := outCmd.StdinPipe()

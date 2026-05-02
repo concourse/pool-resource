@@ -22,7 +22,7 @@ type Source struct {
 }
 
 func (s *Source) UnmarshalJSON(b []byte) error {
-	var inputData map[string]interface{}
+	var inputData map[string]any
 	err := json.NewDecoder(bytes.NewReader(b)).Decode(&inputData)
 	if err != nil {
 		return err
