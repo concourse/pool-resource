@@ -180,6 +180,37 @@ it_clears_netrc_even_after_errors() {
   [ ! -f "$HOME/.netrc" ]
 }
 
+it_configures_private_key_user() {
+  local repo=$(init_repo)
+  local key=$TMPDIR/key-no-passphrase
+
+  ssh-keygen -f $key
+  check_uri_with_key_and_private_key_user $repo $key someuser
+
+  grep "User someuser" $HOME/.ssh/config
+}
+
+it_skips_private_key_user_configuration() {
+  local repo=$(init_repo)
+  local key=$TMPDIR/key-no-passphrase
+
+  ssh-keygen -f $key
+  check_uri_with_key $repo $key
+
+  ! grep "^User " $HOME/.ssh/config
+}
+
+it_skips_forward_agent_configuration() {
+  local repo=$(init_repo)
+  local key=$TMPDIR/key-no-passphrase
+
+  ssh-keygen -f $key
+  check_uri_with_key_and_ssh_agent $repo $key false
+
+  ! grep "ForwardAgent" $HOME/.ssh/config
+}
+
+
 run it_can_check_from_head
 run it_can_check_from_a_ref
 run it_can_check_from_a_bogus_sha
@@ -190,3 +221,6 @@ run it_supports_private_key_without_user
 run it_configures_http_tunnel
 run it_configures_http_tunnel_with_authentication
 run it_clears_netrc_even_after_errors
+run it_configures_private_key_user
+run it_skips_private_key_user_configuration
+run it_skips_forward_agent_configuration

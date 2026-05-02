@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 
-set -e
+set -ex
 
 exec 3>&1 # make stdout available as fd 3 for the result
 exec 1>&2 # redirect all output to stderr for logging
 
-. $(dirname $0)/common.sh
+source $(dirname $0)/common.sh
 
 destination=$1
 
@@ -28,20 +28,19 @@ check_if_file_changed_in_range() {
 # for jq
 PATH=/usr/local/bin:$PATH
 
-payload=$(mktemp $TMPDIR/pool-resource-request.XXXXXX)
+payload="$(cat <&0)"
 
-cat > $payload <&0
+load_pubkey "$payload"
+configure_https_tunnel "$payload"
+configure_git_ssl_verification "$payload"
+configure_credentials "$payload"
 
-load_pubkey $payload
-configure_https_tunnel $payload
-configure_credentials $payload
-
-uri=$(jq -r '.source.uri // ""' < $payload)
-branch=$(jq -r '.source.branch // ""' < $payload)
-pool_name=$(jq -r '.source.pool // ""' < $payload)
-ref=$(jq -r '.version.ref // "HEAD"' < $payload)
-depth=$(jq -r '(.params.depth // 0)' < $payload)
-git_config_payload=$(jq -r '.source.git_config // []' < $payload)
+uri=$(jq -r '.source.uri // ""' <<< "$payload")
+branch=$(jq -r '.source.branch // ""' <<< "$payload")
+pool_name=$(jq -r '.source.pool // ""' <<< "$payload")
+ref=$(jq -r '.version.ref // "HEAD"' <<< "$payload")
+depth=$(jq -r '(.params.depth // 0)' <<< "$payload")
+git_config_payload=$(jq -r '.source.git_config // []' <<< "$payload")
 
 configure_git_global "${git_config_payload}"
 
