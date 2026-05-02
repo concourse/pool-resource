@@ -67,6 +67,10 @@ filed named `.gitkeep`. Finally, create individual locks by making an empty file
       -----END RSA PRIVATE KEY-----
     ```
 
+* `private_key_user`: *Optional.* Enables setting `User` in the ssh config.
+
+* `private_key_passphrase`: *Optional.* To unlock `private_key` if it is protected by a passphrase.
+
 * `username`: *Optional.* Username for HTTP(S) auth when pulling/pushing.
   This is needed when only HTTP/HTTPS protocol for git is available (which does not support private key auth) and auth is required.
 
@@ -90,6 +94,10 @@ filed named `.gitkeep`. Finally, create individual locks by making an empty file
   * `proxy_port`: *Required.* The proxy server's listening port
   * `proxy_user`: *Optional.* If the proxy requires authentication, use this username
   * `proxy_password`: *Optional.* If the proxy requires authentication, use this password
+
+* `forward_agent`: *Optional.* Enables ForwardAgent SSH option when set to true. Useful when using proxy/jump hosts. Defaults to false.
+
+* `skip_ssl_verification`: *Optional.* Skips git ssl verification by exporting `GIT_SSL_NO_VERIFY=true`.
 
 ### Example
 
