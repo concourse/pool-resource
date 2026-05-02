@@ -31,13 +31,13 @@ var _ = Describe("Lock Pool", func() {
 				BeforeEach(func() {
 					called := false
 
-					fakeLockHandler.BroadcastLockPoolStub = func() ([]byte, error) {
+					fakeLockHandler.BroadcastLockPoolStub = func() (string, error) {
 						// succeed on second call
 						if !called {
 							called = true
-							return nil, errors.New("disaster")
+							return "", errors.New("disaster")
 						} else {
-							return nil, nil
+							return "", nil
 						}
 					}
 				})
@@ -53,7 +53,7 @@ var _ = Describe("Lock Pool", func() {
 
 				Context("more than 5 times", func() {
 					BeforeEach(func() {
-						fakeLockHandler.BroadcastLockPoolReturns([]byte("some git message"), errors.New("disaster"))
+						fakeLockHandler.BroadcastLockPoolReturns("some git message", errors.New("disaster"))
 					})
 
 					It("shows the underlying git error", func() {
@@ -71,13 +71,13 @@ var _ = Describe("Lock Pool", func() {
 				BeforeEach(func() {
 					called := false
 
-					fakeLockHandler.BroadcastLockPoolStub = func() ([]byte, error) {
+					fakeLockHandler.BroadcastLockPoolStub = func() (string, error) {
 						// succeed on second call
 						if !called {
 							called = true
-							return nil, out.ErrLockConflict
+							return "", out.ErrLockConflict
 						} else {
-							return nil, nil
+							return "", nil
 						}
 					}
 				})

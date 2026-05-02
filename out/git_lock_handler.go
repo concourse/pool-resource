@@ -14,6 +14,8 @@ var ErrNoLocksAvailable = errors.New("no locks to claim")
 var ErrLockConflict = errors.New("pool state out of date")
 var ErrLockActive = errors.New("lock found")
 
+var _ LockHandler = (*GitLockHandler)(nil)
+
 type GitLockHandler struct {
 	Source Source
 
@@ -37,75 +39,86 @@ func (glh *GitLockHandler) ClaimLock(lockName string) (string, error) {
 		return "", ErrNoLocksAvailable
 	}
 
-	_, err = glh.git("mv", filepath.Join(glh.Source.Pool, "unclaimed", lockName), filepath.Join(glh.Source.Pool, "claimed", lockName))
+	output, err := glh.git("mv", filepath.Join(glh.Source.Pool, "unclaimed", lockName), filepath.Join(glh.Source.Pool, "claimed", lockName))
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	commitMessage := fmt.Sprintf("claiming: %s\n%s", lockName, glh.buildUrl())
-	_, err = glh.git("commit", "-m", commitMessage)
+	output, err = glh.git("commit", "-m", commitMessage)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", err
 	}
 
-	return string(ref), nil
+	return ref, nil
 }
 
 func (glh *GitLockHandler) RemoveLock(lockName string) (string, error) {
 	pool := filepath.Join(glh.dir, glh.Source.Pool)
 
-	_, err := glh.git("rm", filepath.Join(pool, "claimed", lockName))
+	output, err := glh.git("rm", filepath.Join(pool, "claimed", lockName))
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
-	_, err = glh.git("commit", "-m", fmt.Sprintf("removing: %s\n%s", lockName, glh.buildUrl()))
+	output, err = glh.git("commit", "-m", fmt.Sprintf("removing: %s\n%s", lockName, glh.buildUrl()))
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", err
 	}
 
-	return string(ref), nil
+	return ref, nil
 }
 
 func (glh *GitLockHandler) UnclaimLock(lockName string) (string, error) {
 	pool := filepath.Join(glh.dir, glh.Source.Pool)
 
-	_, err := glh.git("mv", filepath.Join(pool, "claimed", lockName), filepath.Join(pool, "unclaimed", lockName))
+	output, err := glh.git("mv", filepath.Join(pool, "claimed", lockName), filepath.Join(pool, "unclaimed", lockName))
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
-	_, err = glh.git("commit", "-m", fmt.Sprintf("unclaiming: %s\n%s", lockName, glh.buildUrl()))
+	output, err = glh.git("commit", "-m", fmt.Sprintf("unclaiming: %s\n%s", lockName, glh.buildUrl()))
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", err
 	}
 
-	return string(ref), nil
+	return ref, nil
 }
 
 func (glh *GitLockHandler) ResetLock() error {
-	_, err := glh.git("fetch", "origin", glh.Source.Branch)
+	output, err := glh.git("fetch", "origin", glh.Source.Branch)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return err
 	}
 
-	_, err = glh.git("reset", "--hard", "origin/"+glh.Source.Branch)
+	output, err = glh.git("reset", "--hard", "origin/"+glh.Source.Branch)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return err
 	}
 
@@ -128,19 +141,22 @@ func (glh *GitLockHandler) AddLock(lock string, contents []byte, initiallyClaime
 		return "", err
 	}
 
-	_, err = glh.git("add", lockPath)
+	output, err := glh.git("add", lockPath)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	commitMessage := fmt.Sprintf("adding %s: %s\n%s", claimedness, lock, glh.buildUrl())
-	_, err = glh.git("commit", lockPath, "-m", commitMessage)
+	output, err = glh.git("commit", lockPath, "-m", commitMessage)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", err
 	}
 
@@ -173,23 +189,26 @@ func (glh *GitLockHandler) UpdateLock(lockName string, contents []byte) (string,
 		return "", err
 	}
 
-	_, err = glh.git("add", lockPath)
+	output, err := glh.git("add", lockPath)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	commitMessage := fmt.Sprintf("%s: %s\n%s", operation, lockName, glh.buildUrl())
-	_, err = glh.git("commit", lockPath, "-m", commitMessage)
+	output, err = glh.git("commit", lockPath, "-m", commitMessage)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", err
 	}
 
-	return string(ref), nil
+	return ref, nil
 }
 
 func (glh *GitLockHandler) CheckLock(lockName string) (string, error) {
@@ -201,13 +220,15 @@ func (glh *GitLockHandler) CheckLock(lockName string) (string, error) {
 		return "", ErrLockActive
 	}
 
-	_, err = glh.git("pull", "origin", glh.Source.Branch)
+	output, err := glh.git("pull", "origin", glh.Source.Branch)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", err
 	}
 
@@ -223,13 +244,15 @@ func (glh *GitLockHandler) CheckUnclaimedLock(lockName string) (string, error) {
 		return "", ErrLockActive
 	}
 
-	_, err = glh.git("pull", "origin", glh.Source.Branch)
+	output, err := glh.git("pull", "origin", glh.Source.Branch)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", err
 	}
 
@@ -244,7 +267,7 @@ func (glh *GitLockHandler) Setup() error {
 		return err
 	}
 
-	cmd := exec.Command("git", "clone", "--branch", glh.Source.Branch, glh.Source.URI, glh.dir)
+	cmd := exec.Command("git", "clone", "--single-branch", "--branch", glh.Source.Branch, glh.Source.URI, glh.dir)
 	err = cmd.Run()
 	if err != nil {
 		return err
@@ -253,8 +276,9 @@ func (glh *GitLockHandler) Setup() error {
 	_, err = glh.git("config", "user.name")
 	if err != nil {
 		// hardcode git user.name if not already set in git_config
-		_, err = glh.git("config", "user.name", "CI Pool Resource")
+		output, err := glh.git("config", "user.name", "CI Pool Resource")
 		if err != nil {
+			fmt.Fprintln(os.Stderr, output)
 			return err
 		}
 	}
@@ -262,8 +286,9 @@ func (glh *GitLockHandler) Setup() error {
 	_, err = glh.git("config", "user.email")
 	if err != nil {
 		// hardcode git user.email if not already set in git_config
-		_, err = glh.git("config", "user.email", "ci-pool@localhost")
+		output, err := glh.git("config", "user.email", "ci-pool@localhost")
 		if err != nil {
+			fmt.Fprintln(os.Stderr, output)
 			return err
 		}
 	}
@@ -293,29 +318,32 @@ func (glh *GitLockHandler) GrabAvailableLock() (string, string, error) {
 	index := rand.Int() % len(files)
 	name := filepath.Base(files[index].Name())
 
-	_, err = glh.git("mv", filepath.Join(glh.Source.Pool, "unclaimed", name), filepath.Join(glh.Source.Pool, "claimed", name))
+	output, err := glh.git("mv", filepath.Join(glh.Source.Pool, "unclaimed", name), filepath.Join(glh.Source.Pool, "claimed", name))
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", "", err
 	}
 
 	commitMessage := fmt.Sprintf("claiming: %s\n%s", name, glh.buildUrl())
-	_, err = glh.git("commit", "-m", commitMessage)
+	output, err = glh.git("commit", "-m", commitMessage)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, output)
 		return "", "", err
 	}
 
 	ref, err := glh.git("rev-parse", "HEAD")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, ref)
 		return "", "", err
 	}
 
 	return name, string(ref), nil
 }
 
-func (glh *GitLockHandler) BroadcastLockPool() ([]byte, error) {
+func (glh *GitLockHandler) BroadcastLockPool() (string, error) {
 	// validate if we're doing check only
 	if glh.checkOnly {
-		return []byte{}, nil
+		return "", nil
 	}
 
 	contents, err := glh.git("push", "origin", "HEAD:"+glh.Source.Branch)
@@ -324,25 +352,26 @@ func (glh *GitLockHandler) BroadcastLockPool() ([]byte, error) {
 	// a commit in the same second acquiring the same lock
 	//
 	// we need to stop and try again
-	if strings.Contains(string(contents), falsePushString) {
+	if strings.Contains(contents, falsePushString) {
 		return contents, ErrLockConflict
 	}
 
-	if strings.Contains(string(contents), pushRejectedString) {
+	if strings.Contains(contents, pushRejectedString) {
 		return contents, ErrLockConflict
 	}
 
-	if strings.Contains(string(contents), pushRemoteRejectedString) {
+	if strings.Contains(contents, pushRemoteRejectedString) {
 		return contents, ErrLockConflict
 	}
 
 	return contents, err
 }
 
-func (glh *GitLockHandler) git(args ...string) ([]byte, error) {
+func (glh *GitLockHandler) git(args ...string) (string, error) {
 	arguments := append([]string{"-C", glh.dir}, args...)
 	cmd := exec.Command("git", arguments...)
-	return cmd.CombinedOutput()
+	s, err := cmd.CombinedOutput()
+	return string(s), err
 }
 
 func (glh *GitLockHandler) buildUrl() string {
