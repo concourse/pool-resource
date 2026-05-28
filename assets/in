@@ -25,9 +25,6 @@ check_if_file_changed_in_range() {
   fi
 }
 
-# for jq
-PATH=/usr/local/bin:$PATH
-
 payload="$(cat <&0)"
 
 load_pubkey "$payload"
