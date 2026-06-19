@@ -49,7 +49,7 @@ RUN chmod +x /opt/go/out
 COPY --from=proxybuilder /usr/bin/proxytunnel /usr/bin/
 
 FROM resource AS tests
-RUN apk --no-cache add git-daemon cmd:ssh-keygen
+RUN apk --no-cache add git-daemon openssh-keygen
 COPY --from=builder /tests /go/resource-tests/
 RUN set -e; for test in /go/resource-tests/*.test; do \
 		$test; \
