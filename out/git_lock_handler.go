@@ -268,8 +268,9 @@ func (glh *GitLockHandler) Setup() error {
 	}
 
 	cmd := exec.Command("git", "clone", "--single-branch", "--branch", glh.Source.Branch, glh.Source.URI, glh.dir)
-	err = cmd.Run()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Fprintln(os.Stderr, string(output))
 		return err
 	}
 
